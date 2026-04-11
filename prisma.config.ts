@@ -7,8 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // DATABASE_URL is required for db:push and db:migrate
-    // Set it in your .env file (see .env.example)
-    url: process.env.DATABASE_URL ?? "",
+    // DIRECT_URL used for migrations (session pooler, port 5432)
+    // DATABASE_URL used for app queries (transaction pooler, port 6543)
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "",
   },
 });
