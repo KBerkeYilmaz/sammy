@@ -9,7 +9,7 @@ const bedrockProvider = createAmazonBedrock({
 
 // Claude Sonnet via Bedrock — used for RAG chat generation
 export const chatModel = bedrockProvider(
-  "eu.anthropic.claude-sonnet-4-20250514-v1:0",
+  "eu.anthropic.claude-sonnet-4-6",
 );
 
 // Titan Embeddings v2 — used for embedding opportunities and queries
