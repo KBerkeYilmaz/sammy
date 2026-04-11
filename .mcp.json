@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/@anthropic-ai/claude-code@latest/resources/mcp-schema.json",
+  "mcpServers": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "Up-to-date docs for Next.js 16, Prisma v7, tRPC, Better Auth, and more"
+    },
+    "shadcn": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@shadcn/mcp-server@latest"],
+      "description": "shadcn/ui component registry — accurate props, patterns, and install commands"
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "description": "Browser automation for E2E testing and UI verification"
+    },
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "GitHub PR/issue management — requires GITHUB_PERSONAL_ACCESS_TOKEN in env"
+    },
+    "postgres": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"],
+      "description": "Direct DB queries for development — DEV DATABASE ONLY. Never point at production."
+    }
+  }
+}
