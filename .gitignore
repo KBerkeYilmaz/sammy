@@ -53,3 +53,6 @@ yarn-error.log*
 
 # cli build output
 packages/cli/dist/
+
+# git worktrees
+.worktrees/
