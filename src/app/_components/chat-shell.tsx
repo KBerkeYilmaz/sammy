@@ -2,10 +2,10 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Search, Filter, Brain } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 
@@ -16,10 +16,21 @@ const SUGGESTED_PROMPTS = [
   "Summarize recent award notices over $10M",
 ];
 
+const TOOL_LABELS: Record<string, { label: string; icon: typeof Search }> = {
+  "tool-searchByKeyword": { label: "Searching by keyword", icon: Search },
+  "tool-searchBySemantic": { label: "Searching semantically", icon: Brain },
+  "tool-filterOpportunities": {
+    label: "Filtering opportunities",
+    icon: Filter,
+  },
+};
+
 export function ChatShell() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
+  const prevStatusRef = useRef<string>("");
 
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -27,9 +38,26 @@ export function ChatShell() {
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  useEffect(() => {
+  // Only auto-scroll when the agent finishes a response, not during streaming
+  const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, []);
+
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    // Scroll when: new user message sent, or agent just finished
+    if (
+      status === "submitted" ||
+      (prevStatus === "streaming" && status === "ready")
+    ) {
+      // Small delay so DOM settles before scrolling
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
+    }
+  }, [status, scrollToBottom]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -69,13 +97,16 @@ export function ChatShell() {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <EmptyState onPrompt={handleSuggestedPrompt} isLoading={isLoading} />
+          <EmptyState
+            onPrompt={handleSuggestedPrompt}
+            isLoading={isLoading}
+          />
         ) : (
-          <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+          <div className="mx-auto max-w-3xl space-y-6 px-6 py-6">
             {error && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <div className="animate-in fade-in slide-in-from-top-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 <span className="font-medium">Error:</span> {error.message}
               </div>
             )}
@@ -85,7 +116,7 @@ export function ChatShell() {
             ))}
 
             {status === "submitted" && (
-              <div className="flex justify-start">
+              <div className="flex justify-start pl-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="rounded-lg bg-muted px-4 py-3">
                   <ThinkingDots />
                 </div>
@@ -98,15 +129,15 @@ export function ChatShell() {
       </div>
 
       {/* Input */}
-      <div className="border-t bg-background p-4">
+      <div className="border-t bg-background px-6 py-5">
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex max-w-3xl items-end gap-2"
+          className="mx-auto flex max-w-3xl items-end gap-3"
         >
           <textarea
             ref={inputRef}
-            rows={1}
-            className="flex-1 resize-none overflow-hidden rounded-lg border bg-background px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-ring min-h-[40px] max-h-36"
+            rows={2}
+            className="flex-1 resize-none overflow-hidden rounded-xl border bg-background px-4 py-3 text-sm leading-relaxed outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring min-h-[56px] max-h-40"
             placeholder="Ask about opportunities, agencies, deadlines..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -117,12 +148,12 @@ export function ChatShell() {
             type="submit"
             size="icon"
             disabled={!input.trim() || isLoading}
-            className="size-10 shrink-0"
+            className="size-11 shrink-0 rounded-xl"
           >
             {isLoading ? <Spinner /> : <ArrowUp className="size-4" />}
           </Button>
         </form>
-        <p className="mx-auto mt-1.5 max-w-3xl text-center text-xs text-muted-foreground">
+        <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
           Shift+Enter for new line
         </p>
       </div>
@@ -134,12 +165,14 @@ function MessageBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex ${isUser ? "justify-end" : "justify-start"} animate-in fade-in ${isUser ? "slide-in-from-right-2" : "slide-in-from-left-2"} duration-300`}
+    >
       <div
-        className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${
+        className={`rounded-xl text-sm ${
           isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted"
+            ? "max-w-[80%] bg-primary px-4 py-2.5 text-primary-foreground"
+            : "max-w-[85%] bg-muted px-5 py-3"
         }`}
       >
         {isUser ? (
@@ -147,14 +180,63 @@ function MessageBubble({ message }: { message: UIMessage }) {
             part.type === "text" ? <span key={i}>{part.text}</span> : null,
           )
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            {message.parts.map((part, i) =>
-              part.type === "text" ? (
-                <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>
-                  {part.text}
-                </ReactMarkdown>
-              ) : null,
-            )}
+          <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+            {message.parts.map((part, i) => {
+              if (part.type === "text") {
+                return (
+                  <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>
+                    {part.text}
+                  </ReactMarkdown>
+                );
+              }
+
+              // Tool call indicators
+              if (
+                part.type === "tool-searchByKeyword" ||
+                part.type === "tool-searchBySemantic" ||
+                part.type === "tool-filterOpportunities"
+              ) {
+                const toolInfo = TOOL_LABELS[part.type]!;
+                const Icon = toolInfo.icon;
+                const isComplete = part.state === "output-available";
+
+                return (
+                  <div
+                    key={i}
+                    className={`not-prose my-3 flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-xs transition-all duration-500 ${
+                      isComplete
+                        ? "border-primary/20 bg-primary/5 text-muted-foreground"
+                        : "border-border bg-background/50 text-foreground"
+                    }`}
+                  >
+                    <Icon
+                      className={`size-3.5 shrink-0 ${
+                        isComplete
+                          ? "text-primary"
+                          : "animate-pulse text-primary"
+                      }`}
+                    />
+                    <span className="font-medium">
+                      {isComplete ? (
+                        <>
+                          {toolInfo.label}{" "}
+                          <span className="font-normal text-muted-foreground">
+                            &mdash; done
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex items-center gap-1.5">
+                          {toolInfo.label}
+                          <LoadingEllipsis />
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              }
+
+              return null;
+            })}
           </div>
         )}
       </div>
@@ -170,28 +252,41 @@ function EmptyState({
   isLoading: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-4">
-      <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10">
+    <div className="flex h-full flex-col items-center justify-center px-6">
+      <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 animate-in zoom-in duration-500">
         <span className="text-xl font-bold text-primary">S</span>
       </div>
-      <h2 className="text-lg font-semibold">Sammy</h2>
-      <p className="mb-8 text-sm text-muted-foreground">
+      <h2 className="text-lg font-semibold animate-in fade-in slide-in-from-bottom-1 duration-500 delay-100">
+        Sammy
+      </h2>
+      <p className="mb-8 text-sm text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-500 delay-200">
         Federal contract intelligence powered by SAM.gov
       </p>
 
       <div className="w-full max-w-md space-y-2">
-        {SUGGESTED_PROMPTS.map((prompt) => (
+        {SUGGESTED_PROMPTS.map((prompt, idx) => (
           <button
             key={prompt}
             onClick={() => onPrompt(prompt)}
             disabled={isLoading}
-            className="w-full rounded-lg border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground hover:translate-x-1 disabled:cursor-not-allowed disabled:opacity-50 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            style={{ animationDelay: `${(idx + 2) * 75}ms` }}
           >
             {prompt}
           </button>
         ))}
       </div>
     </div>
+  );
+}
+
+function LoadingEllipsis() {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <span className="size-1 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
+      <span className="size-1 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
+      <span className="size-1 animate-bounce rounded-full bg-current" />
+    </span>
   );
 }
 
