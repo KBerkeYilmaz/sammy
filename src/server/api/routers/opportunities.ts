@@ -10,13 +10,17 @@ export const opportunitiesRouter = createTRPCRouter({
         department: z.string().optional(),
         type: z.string().optional(),
         naicsCode: z.string().optional(),
+        activeOnly: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const where = {
-        ...(input.department && { department: input.department }),
+        ...(input.department && {
+          department: { contains: input.department, mode: "insensitive" as const },
+        }),
         ...(input.type && { type: input.type }),
         ...(input.naicsCode && { naicsCode: input.naicsCode }),
+        ...(input.activeOnly === true && { active: true }),
       };
       const [items, total] = await Promise.all([
         ctx.db.opportunity.findMany({
