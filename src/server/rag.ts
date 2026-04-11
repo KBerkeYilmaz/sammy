@@ -10,11 +10,12 @@ interface ChunkResult {
 }
 
 /**
- * Embed a query string and return the top-K most similar opportunity chunks.
+ * Embed a query string and return the top-K most similar opportunity chunks
+ * via pgvector cosine similarity.
  */
-export async function retrieveContext(
+export async function semanticSearch(
   query: string,
-  topK = 8,
+  topK = 15,
 ): Promise<ChunkResult[]> {
   const { embedding } = await embed({
     model: embeddingModel,
@@ -26,7 +27,7 @@ export async function retrieveContext(
 
   const vector = `[${embedding.join(",")}]`;
 
-  const rows = await db.$queryRaw<ChunkResult[]>`
+  return db.$queryRaw<ChunkResult[]>`
     SELECT
       id,
       content,
@@ -37,19 +38,19 @@ export async function retrieveContext(
     ORDER BY embedding <=> ${vector}::vector
     LIMIT ${topK}
   `;
+}
 
-  return rows;
+/**
+ * Return total opportunity count for system prompt context.
+ */
+export async function getOpportunityCount(): Promise<number> {
+  return db.opportunity.count();
 }
 
 /**
  * Format retrieved chunks into a context block for injection into the system prompt.
  */
-export function buildContextBlock(chunks: ChunkResult[]): string {
-  if (chunks.length === 0) return "";
-
-  const items = chunks
-    .map((c, i) => `[${i + 1}] ${c.content}`)
-    .join("\n");
-
-  return `\n\nRelevant opportunities from the database (use these to ground your answer):\n${items}`;
+export function formatChunks(chunks: ChunkResult[]): string {
+  if (chunks.length === 0) return "No matching opportunities found.";
+  return chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
 }
