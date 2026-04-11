@@ -7,6 +7,7 @@ export const opportunitiesRouter = createTRPCRouter({
       z.object({
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
+        title: z.string().optional(),
         department: z.string().optional(),
         type: z.string().optional(),
         naicsCode: z.string().optional(),
@@ -15,6 +16,9 @@ export const opportunitiesRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const where = {
+        ...(input.title && {
+          title: { contains: input.title, mode: "insensitive" as const },
+        }),
         ...(input.department && {
           department: { contains: input.department, mode: "insensitive" as const },
         }),

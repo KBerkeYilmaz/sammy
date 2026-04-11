@@ -1,19 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { atom, useAtom } from "jotai";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { Opportunity } from "@prisma/client";
 import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -29,8 +23,20 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { SidebarTrigger } from "~/components/ui/sidebar";
+import { columns } from "./columns";
+import { DataTable } from "./data-table";
 
+// ── Atoms ────────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 20;
+
+const titleInputAtom = atom("");
+const titleAtom = atom("");
+const deptInputAtom = atom("");
+const departmentAtom = atom("");
+const typeAtom = atom("all");
+const activeOnlyAtom = atom(false);
+const pageAtom = atom(0);
+const selectedIdAtom = atom<string | null>(null);
 
 const OPPORTUNITY_TYPES = [
   { label: "All Types", value: "all" },
@@ -42,13 +48,7 @@ const OPPORTUNITY_TYPES = [
   { label: "Justification", value: "Justification" },
 ];
 
-function typeBadgeVariant(
-  type: string,
-): "default" | "secondary" | "outline" | "destructive" {
-  if (type === "Solicitation" || type === "Combined Synopsis/Solicitation") return "default";
-  if (type === "Award Notice") return "secondary";
-  return "outline";
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "\u2014";
@@ -74,25 +74,48 @@ function isApproaching(deadline: Date): boolean {
   return diff >= 0 && diff < 7 * 24 * 60 * 60 * 1000;
 }
 
-export function OpportunityExplorer() {
-  const [deptInput, setDeptInput] = useState("");
-  const [department, setDepartment] = useState("");
-  const [type, setType] = useState("all");
-  const [activeOnly, setActiveOnly] = useState(false);
-  const [page, setPage] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+function typeBadgeVariant(
+  type: string,
+): "default" | "secondary" | "outline" | "destructive" {
+  if (type === "Solicitation" || type === "Combined Synopsis/Solicitation") return "default";
+  if (type === "Award Notice") return "secondary";
+  return "outline";
+}
 
+// ── Main component ───────────────────────────────────────────────────────────
+
+export function OpportunityExplorer() {
+  const [titleInput, setTitleInput] = useAtom(titleInputAtom);
+  const [title, setTitle] = useAtom(titleAtom);
+  const [deptInput, setDeptInput] = useAtom(deptInputAtom);
+  const [department, setDepartment] = useAtom(departmentAtom);
+  const [type, setType] = useAtom(typeAtom);
+  const [activeOnly, setActiveOnly] = useAtom(activeOnlyAtom);
+  const [page, setPage] = useAtom(pageAtom);
+  const [selectedId, setSelectedId] = useAtom(selectedIdAtom);
+
+  // Debounce title filter
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setTitle(titleInput);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [titleInput, setTitle, setPage]);
+
+  // Debounce department filter
   useEffect(() => {
     const t = setTimeout(() => {
       setDepartment(deptInput);
       setPage(0);
     }, 400);
     return () => clearTimeout(t);
-  }, [deptInput]);
+  }, [deptInput, setDepartment, setPage]);
 
   const { data, isFetching } = api.opportunities.list.useQuery({
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
+    title: title || undefined,
     department: department || undefined,
     type: type === "all" ? undefined : type,
     activeOnly: activeOnly || undefined,
@@ -105,9 +128,11 @@ export function OpportunityExplorer() {
     );
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
-  const hasFilters = deptInput !== "" || type !== "all" || activeOnly;
+  const hasFilters = titleInput !== "" || deptInput !== "" || type !== "all" || activeOnly;
 
   function clearFilters() {
+    setTitleInput("");
+    setTitle("");
     setDeptInput("");
     setDepartment("");
     setType("all");
@@ -125,10 +150,25 @@ export function OpportunityExplorer() {
         <SidebarTrigger className="-ml-1" />
         <div className="h-4 w-px bg-border" />
         <h1 className="text-sm font-semibold">Explore Opportunities</h1>
+        {isFetching && (
+          <span className="ml-auto animate-pulse text-xs text-muted-foreground">
+            Refreshing\u2026
+          </span>
+        )}
       </header>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3 border-b px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Title</label>
+          <Input
+            placeholder="Search by title..."
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            className="w-56"
+          />
+        </div>
+
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Department</label>
           <Input
@@ -161,7 +201,7 @@ export function OpportunityExplorer() {
           </Select>
         </div>
 
-        <label className="mb-0.5 flex cursor-pointer items-center gap-2">
+        <label className="mt-5 flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={activeOnly}
@@ -175,21 +215,21 @@ export function OpportunityExplorer() {
         </label>
 
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="mb-0.5">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="mt-5">
             Clear filters
           </Button>
         )}
 
         <div className="flex-1" />
 
-        <p className="mb-0.5 text-sm text-muted-foreground">
+        <p className="mt-5 text-sm text-muted-foreground">
           {data ? (
             data.total === 0 ? (
               "No results"
             ) : (
               <>
                 <span className="font-medium text-foreground">
-                  {start}\u2013{end}
+                  {start}&ndash;{end}
                 </span>{" "}
                 of{" "}
                 <span className="font-medium text-foreground">
@@ -200,93 +240,19 @@ export function OpportunityExplorer() {
           ) : (
             "Loading\u2026"
           )}
-          {isFetching && (
-            <span className="ml-2 animate-pulse text-muted-foreground">Refreshing\u2026</span>
-          )}
         </p>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <div className="rounded-xl border border-border m-4">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead className="px-4">Title</TableHead>
-                <TableHead className="px-4">Department</TableHead>
-                <TableHead className="px-4">Type</TableHead>
-                <TableHead className="px-4">Posted</TableHead>
-                <TableHead className="px-4">Deadline</TableHead>
-                <TableHead className="px-4">NAICS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {!data &&
-                Array.from({ length: 8 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j} className="px-4">
-                        <div className="h-4 animate-pulse rounded bg-muted" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-
-              {data?.items.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="px-4 py-16 text-center text-muted-foreground"
-                  >
-                    No opportunities found. Try adjusting your filters.
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {data?.items.map((opp, i) => (
-                <TableRow
-                  key={opp.id}
-                  onClick={() => setSelectedId(opp.id)}
-                  className={[
-                    "cursor-pointer",
-                    selectedId === opp.id ? "bg-primary/5" : i % 2 !== 0 ? "bg-muted/10" : "",
-                  ].join(" ")}
-                >
-                  <TableCell className="max-w-xs whitespace-normal px-4 py-3">
-                    <span className="line-clamp-2 font-medium leading-snug">{opp.title}</span>
-                  </TableCell>
-                  <TableCell className="max-w-[180px] px-4 py-3">
-                    <span className="block truncate text-muted-foreground">{opp.department}</span>
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <Badge variant={typeBadgeVariant(opp.type)}>{opp.type}</Badge>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-muted-foreground">
-                    {formatDate(opp.postedDate)}
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    {opp.responseDeadline ? (
-                      <span
-                        className={
-                          isApproaching(opp.responseDeadline)
-                            ? "font-medium text-destructive"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {formatDate(opp.responseDeadline)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">\u2014</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {opp.naicsCode ?? "\u2014"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+      {/* Data Table */}
+      <div className="flex-1 overflow-auto p-4">
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          isLoading={!data}
+          selectedId={selectedId}
+          getRowId={(row: Opportunity) => row.id}
+          onRowClick={(row: Opportunity) => setSelectedId(row.id)}
+        />
       </div>
 
       {/* Pagination */}
@@ -446,6 +412,8 @@ export function OpportunityExplorer() {
     </div>
   );
 }
+
+// ── Sub-components ───────────────────────────────────────────────────────────
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
