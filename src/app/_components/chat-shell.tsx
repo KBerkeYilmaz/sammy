@@ -62,7 +62,7 @@ export function ChatShell() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-89px)]">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* ── Main layout ──────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar — system info */}
@@ -286,7 +286,7 @@ function EmptyState({
 
       <div
         className="text-2xl font-bold tracking-[0.2em] uppercase text-[oklch(0.78_0.14_68)] mb-1"
-        style={{ fontFamily: "var(--font-rajdhani)" }}
+        style={{ fontFamily: "var(--font-sans)" }}
       >
         SCOUT
       </div>

@@ -30,7 +30,7 @@ export default function AdminPage() {
           <div className="w-1 h-4 bg-[oklch(0.78_0.14_68)]" />
           <h1
             className="text-lg font-bold tracking-[0.15em] uppercase text-foreground"
-            style={{ fontFamily: "var(--font-rajdhani)" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             ADMIN
           </h1>

@@ -8,7 +8,6 @@
 @theme {
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jb-mono), ui-monospace, "Cascadia Code", "Consolas", monospace;
-  --font-display: var(--font-rajdhani), var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
@@ -79,7 +78,6 @@
 @theme inline {
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -129,8 +127,9 @@
   html {
     @apply font-sans;
     color-scheme: dark;
-    /* Subtle scanline overlay for terminal depth */
     background-color: oklch(0.09 0.008 250);
+    /* Full-height root — lets children fill viewport without calc() hacks */
+    height: 100%;
   }
 
   body {
@@ -138,8 +137,11 @@
     font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Noise texture via SVG filter for depth */
-    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    /* iOS safe area bottom inset (notch / home indicator) */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Scrollbar styling — terminal aesthetic */

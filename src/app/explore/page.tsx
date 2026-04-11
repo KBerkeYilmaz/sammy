@@ -9,7 +9,7 @@ export const metadata = {
 export default function ExplorePage() {
   return (
     <HydrateClient>
-      <div className="flex flex-col flex-1 min-h-0 h-[calc(100vh-89px)]">
+      <div className="flex flex-col flex-1 min-h-0 min-h-0">
         {/* Page header */}
         <div className="border-b border-border bg-[oklch(0.09_0.008_250)] px-6 py-4 shrink-0">
           <div className="flex items-start justify-between">
@@ -18,7 +18,7 @@ export default function ExplorePage() {
                 <div className="w-1 h-4 bg-[oklch(0.78_0.14_68)]" />
                 <h1
                   className="text-lg font-bold tracking-[0.15em] uppercase text-foreground"
-                  style={{ fontFamily: "var(--font-rajdhani)" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   INTEL FEED
                 </h1>
