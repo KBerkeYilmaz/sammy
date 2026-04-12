@@ -8,14 +8,19 @@ import {
   type UIMessage,
 } from "ai";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { SCOUT_SYSTEM_PROMPT } from "~/server/prompts";
 import { chatModel } from "~/server/bedrock";
 import { semanticSearch, formatChunks, getOpportunityCount } from "~/server/rag";
 import { db } from "~/server/db";
+import { auth } from "~/server/better-auth";
 
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return new Response("Unauthorized", { status: 401 });
+
   const { messages } = (await req.json()) as { messages: UIMessage[] };
 
   const totalCount = await getOpportunityCount();
