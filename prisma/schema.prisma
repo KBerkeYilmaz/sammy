@@ -52,7 +52,9 @@ model Opportunity {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  chunks OpportunityChunk[]
+  chunks       OpportunityChunk[]
+  score        OpportunityScore?
+  captureBrief CaptureBrief?
 }
 
 model OpportunityChunk {
@@ -63,6 +65,57 @@ model OpportunityChunk {
   createdAt     DateTime    @default(now())
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model ScoringProfile {
+  id                String   @id @default(cuid())
+  name              String
+  isActive          Boolean  @default(true)
+  targetNaics       Json     // string[]
+  targetDepartments Json     // string[]
+  preferredSetAsides Json    // string[]
+  keywords          Json     // string[]
+  minContractValue  Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model OpportunityScore {
+  id             String   @id @default(cuid())
+  opportunityId  String   @unique
+  fitScore       Int      // 0-100
+  recommendation String   // "pursue" | "watch" | "skip"
+  rationale      String
+  keyStrengths   Json     // string[]
+  risks          Json     // string[]
+  profileId      String
+  scoredAt       DateTime @default(now())
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model CaptureBrief {
+  id              String   @id @default(cuid())
+  opportunityId   String   @unique
+  summary         String
+  keyRequirements Json     // string[]
+  competitiveEdge String
+  suggestedTeam   Json     // string[]
+  timeline        String
+  generatedAt     DateTime @default(now())
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model WorkflowRun {
+  id                     String    @id @default(cuid())
+  type                   String    // "scoring" | "capture_brief" | "full_pipeline"
+  status                 String    // "running" | "completed" | "failed"
+  opportunitiesProcessed Int       @default(0)
+  results                Json      // { scored, pursue, watch, skip, briefsGenerated }
+  errors                 Json?
+  startedAt              DateTime  @default(now())
+  completedAt            DateTime?
 }
 
 model ChatSession {

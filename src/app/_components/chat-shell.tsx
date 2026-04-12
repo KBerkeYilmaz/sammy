@@ -5,24 +5,44 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, Search, Filter, Brain } from "lucide-react";
+import {
+  ArrowUp,
+  Search,
+  Filter,
+  Brain,
+  BarChart3,
+  FileText,
+  Clock,
+  GitCompare,
+  ClipboardList,
+  Swords,
+  CheckSquare,
+  PenTool,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 
 const SUGGESTED_PROMPTS = [
-  "Show me active DoD solicitations closing this week",
-  "Which agencies have the most open IT contracts?",
+  "What opportunities should we pursue this week?",
+  "Show me deadlines coming up in the next 14 days",
   "Find cybersecurity opportunities under NAICS 541519",
-  "Summarize recent award notices over $10M",
+  "Compare the top 3 scored opportunities",
 ];
 
 const TOOL_LABELS: Record<string, { label: string; icon: typeof Search }> = {
   "tool-searchByKeyword": { label: "Searching by keyword", icon: Search },
   "tool-searchBySemantic": { label: "Searching semantically", icon: Brain },
-  "tool-filterOpportunities": {
-    label: "Filtering opportunities",
-    icon: Filter,
-  },
+  "tool-filterOpportunities": { label: "Filtering opportunities", icon: Filter },
+  // Phase 2 — Data tools
+  "tool-getScoredPipeline": { label: "Checking scored pipeline", icon: BarChart3 },
+  "tool-getCaptureBrief": { label: "Fetching capture brief", icon: FileText },
+  "tool-deadlineMonitor": { label: "Monitoring deadlines", icon: Clock },
+  "tool-compareOpportunities": { label: "Comparing opportunities", icon: GitCompare },
+  // Phase 2 — AI tools
+  "tool-analyzeRfp": { label: "Analyzing RFP", icon: ClipboardList },
+  "tool-competitiveLandscape": { label: "Analyzing competitors", icon: Swords },
+  "tool-generateComplianceMatrix": { label: "Building compliance matrix", icon: CheckSquare },
+  "tool-draftProposalOutline": { label: "Drafting proposal outline", icon: PenTool },
 };
 
 export function ChatShell() {
@@ -190,15 +210,11 @@ function MessageBubble({ message }: { message: UIMessage }) {
                 );
               }
 
-              // Tool call indicators
-              if (
-                part.type === "tool-searchByKeyword" ||
-                part.type === "tool-searchBySemantic" ||
-                part.type === "tool-filterOpportunities"
-              ) {
-                const toolInfo = TOOL_LABELS[part.type]!;
+              // Tool call indicators — dynamically match any registered tool
+              const toolInfo = TOOL_LABELS[part.type];
+              if (toolInfo && "state" in part) {
                 const Icon = toolInfo.icon;
-                const isComplete = part.state === "output-available";
+                const isComplete = (part as { state: string }).state === "output-available";
 
                 return (
                   <div

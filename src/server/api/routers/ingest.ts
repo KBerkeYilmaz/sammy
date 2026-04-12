@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { fetchOpportunities } from "~/server/sam";
 import { ingestOpportunities } from "~/server/ingestion";
+import { runPipeline } from "~/server/agents/pipeline";
 
 export const ingestRouter = createTRPCRouter({
   trigger: publicProcedure
@@ -26,6 +27,11 @@ export const ingestRouter = createTRPCRouter({
       });
 
       const result = await ingestOpportunities(opportunities);
+
+      // Fire-and-forget: auto-score newly ingested opportunities
+      if (result.upserted > 0) {
+        void runPipeline();
+      }
 
       return {
         fetched: opportunities.length,
