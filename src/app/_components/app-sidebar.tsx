@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Search, Settings } from "lucide-react";
+import {
+  MessageSquare,
+  Search,
+  Settings,
+  LayoutGrid,
+  FileText,
+  SlidersHorizontal,
+  History,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +29,13 @@ const NAV_ITEMS = [
   { label: "Chat", href: "/", icon: MessageSquare },
   { label: "Explore", href: "/explore", icon: Search },
   { label: "Admin", href: "/admin", icon: Settings },
+];
+
+const PIPELINE_ITEMS = [
+  { label: "Dashboard", href: "/pipeline", icon: LayoutGrid },
+  { label: "Briefs", href: "/pipeline/briefs", icon: FileText },
+  { label: "Settings", href: "/pipeline/settings", icon: SlidersHorizontal },
+  { label: "History", href: "/pipeline/history", icon: History },
 ];
 
 export function AppSidebar() {
@@ -56,6 +71,29 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={pathname === item.href}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Pipeline</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {PIPELINE_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    render={<Link href={item.href} />}
+                    isActive={
+                      item.href === "/pipeline"
+                        ? pathname === "/pipeline"
+                        : pathname.startsWith(item.href)
+                    }
                   >
                     <item.icon />
                     <span>{item.label}</span>
