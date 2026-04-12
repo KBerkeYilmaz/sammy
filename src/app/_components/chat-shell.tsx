@@ -18,6 +18,7 @@ import {
   Swords,
   CheckSquare,
   PenTool,
+  Building2,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
@@ -43,6 +44,8 @@ const TOOL_LABELS: Record<string, { label: string; icon: typeof Search }> = {
   "tool-competitiveLandscape": { label: "Analyzing competitors", icon: Swords },
   "tool-generateComplianceMatrix": { label: "Building compliance matrix", icon: CheckSquare },
   "tool-draftProposalOutline": { label: "Drafting proposal outline", icon: PenTool },
+  // Phase 3 — Onboarding
+  "tool-setup_company_profile": { label: "Setting up company profile", icon: Building2 },
 };
 
 export function ChatShell() {
