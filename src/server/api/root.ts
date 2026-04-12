@@ -2,6 +2,7 @@ import { chatRouter } from "~/server/api/routers/chat";
 import { ingestRouter } from "~/server/api/routers/ingest";
 import { opportunitiesRouter } from "~/server/api/routers/opportunities";
 import { workflowRouter } from "~/server/api/routers/workflow";
+import { workflowsRouter } from "~/server/api/routers/workflows";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   ingest: ingestRouter,
   chat: chatRouter,
   workflow: workflowRouter,
+  workflows: workflowsRouter,
 });
 
 // export type definition of API
