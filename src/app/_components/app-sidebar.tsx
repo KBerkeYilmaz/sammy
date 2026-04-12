@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   MessageSquare,
   Search,
@@ -10,7 +11,10 @@ import {
   FileText,
   SlidersHorizontal,
   History,
+  LogOut,
+  User,
 } from "lucide-react";
+import { authClient } from "~/server/better-auth/client";
 import {
   Sidebar,
   SidebarContent,
@@ -40,6 +44,8 @@ const PIPELINE_ITEMS = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
 
   return (
     <Sidebar collapsible="icon">
@@ -107,9 +113,25 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
+          {session?.user && (
+            <SidebarMenuItem>
+              <SidebarMenuButton size="sm">
+                <User className="size-4" />
+                <span className="truncate">{session.user.name ?? session.user.email}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
-            <SidebarMenuButton size="sm" className="text-xs text-muted-foreground">
-              <span className="truncate">Powered by SAM.gov + Bedrock</span>
+            <SidebarMenuButton
+              size="sm"
+              className="text-muted-foreground"
+              onClick={async () => {
+                await authClient.signOut();
+                router.push("/sign-in");
+              }}
+            >
+              <LogOut className="size-4" />
+              <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
