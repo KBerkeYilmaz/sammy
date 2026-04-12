@@ -4,7 +4,6 @@ import { generateCaptureBrief } from "./capture-brief";
 
 const BATCH_SIZE = 5;
 const BATCH_DELAY_MS = 2000;
-const DEFAULT_LIMIT = 50;
 
 const DEFAULT_PROFILE = {
   name: "Default Profile",
@@ -48,7 +47,6 @@ export async function runPipeline(opportunityIds?: string[]) {
       score: null,
     },
     orderBy: { postedDate: "desc" },
-    take: opportunityIds ? undefined : DEFAULT_LIMIT,
   });
 
   if (opportunities.length === 0) {
