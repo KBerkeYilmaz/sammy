@@ -95,15 +95,21 @@ export function WorkflowCanvas({
       const newNode: Node = {
         id,
         type,
-        position: { x: 250, y: nodes.length * 120 + 50 },
+        position: { x: 0, y: 0 },
         data: {
           label: NODE_PALETTE.find((p) => p.type === type)?.label ?? type,
           description: "New step",
         },
       };
-      setNodes((nds) => [...nds, newNode]);
+      // Add node then re-layout so it slots into the DAG cleanly
+      setNodes((nds) => {
+        const updated = [...nds, newNode];
+        const { nodes: ln, edges: le } = getLayoutedElements(updated, edges);
+        setEdges(le);
+        return ln;
+      });
     },
-    [setNodes, nodes.length],
+    [setNodes, setEdges, edges],
   );
 
   const handleAutoLayout = useCallback(() => {
@@ -185,7 +191,7 @@ export function WorkflowCanvas({
         <Controls position="bottom-right" />
         <MiniMap
           position="bottom-left"
-          className="!rounded-lg !border !shadow-sm"
+          className="rounded-lg! border! shadow-sm!"
           maskColor="rgba(0,0,0,0.1)"
         />
         <Background gap={20} size={1} />
