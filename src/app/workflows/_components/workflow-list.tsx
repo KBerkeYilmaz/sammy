@@ -35,16 +35,19 @@ export function WorkflowList({ selectedId, onSelect }: WorkflowListProps) {
 
         {workflows?.length === 0 && (
           <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-            No workflows yet. Ask Scout to generate one in chat.
+            No workflows yet. Ask Sammy to generate one in chat.
           </p>
         )}
 
         {workflows?.map((wf) => (
-          <button
+          <div
             key={wf.id}
+            role="button"
+            tabIndex={0}
             onClick={() => onSelect(wf.id)}
+            onKeyDown={(e) => e.key === "Enter" && onSelect(wf.id)}
             className={cn(
-              "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+              "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
               selectedId === wf.id
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent/50",
@@ -87,7 +90,7 @@ export function WorkflowList({ selectedId, onSelect }: WorkflowListProps) {
                 <Trash2 className="size-3.5" />
               </Button>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>
