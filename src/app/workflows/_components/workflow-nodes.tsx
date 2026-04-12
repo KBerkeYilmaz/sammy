@@ -1,14 +1,15 @@
 "use client";
 
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Zap, Sparkles, GitBranch, Send } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 
-interface WorkflowNodeData {
+export interface WorkflowNodeData extends Record<string, unknown> {
   label: string;
   description?: string;
-  [key: string]: unknown;
 }
+
+type WorkflowNodeProps = NodeProps<Node<WorkflowNodeData>>;
 
 function NodeShell({
   data,
@@ -56,10 +57,10 @@ function NodeShell({
   );
 }
 
-export function TriggerNode({ data }: NodeProps) {
+export function TriggerNode({ data }: WorkflowNodeProps) {
   return (
     <NodeShell
-      data={data as unknown as WorkflowNodeData}
+      data={data}
       icon={Zap}
       accentColor="border-emerald-500"
       hasInput={false}
@@ -67,18 +68,17 @@ export function TriggerNode({ data }: NodeProps) {
   );
 }
 
-export function AiActionNode({ data }: NodeProps) {
+export function AiActionNode({ data }: WorkflowNodeProps) {
   return (
     <NodeShell
-      data={data as unknown as WorkflowNodeData}
+      data={data}
       icon={Sparkles}
       accentColor="border-indigo-500"
     />
   );
 }
 
-export function ConditionNode({ data }: NodeProps) {
-  const nodeData = data as unknown as WorkflowNodeData;
+export function ConditionNode({ data }: WorkflowNodeProps) {
   return (
     <Card className="w-56 border-2 border-amber-500 shadow-md">
       <Handle
@@ -91,10 +91,10 @@ export function ConditionNode({ data }: NodeProps) {
           <GitBranch className="size-4 text-amber-500" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-tight">{nodeData.label}</p>
-          {nodeData.description && (
+          <p className="text-sm font-medium leading-tight">{data.label}</p>
+          {data.description && (
             <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
-              {nodeData.description}
+              {data.description}
             </p>
           )}
         </div>
@@ -117,10 +117,10 @@ export function ConditionNode({ data }: NodeProps) {
   );
 }
 
-export function ActionNode({ data }: NodeProps) {
+export function ActionNode({ data }: WorkflowNodeProps) {
   return (
     <NodeShell
-      data={data as unknown as WorkflowNodeData}
+      data={data}
       icon={Send}
       accentColor="border-purple-500"
     />

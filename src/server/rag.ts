@@ -2,7 +2,7 @@ import { embed } from "ai";
 import { db } from "~/server/db";
 import { embeddingModel } from "~/server/bedrock";
 
-interface ChunkResult {
+export interface ChunkResult {
   id: string;
   content: string;
   metadata: unknown;

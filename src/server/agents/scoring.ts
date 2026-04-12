@@ -1,14 +1,15 @@
 import { generateObject } from "ai";
 import type { Opportunity, ScoringProfile } from "@prisma/client";
 import { chatModel } from "~/server/bedrock";
+import { parseSamJson } from "~/server/sam";
 import { scoringResultSchema, type ScoringResult } from "./schemas";
 
 export async function scoreOpportunity(
   opportunity: Opportunity,
   profile: ScoringProfile,
 ): Promise<ScoringResult> {
-  const rawJson = opportunity.rawJson as Record<string, unknown>;
-  const typeOfSetAside = (rawJson.typeOfSetAside as string) ?? "none";
+  const samData = parseSamJson(opportunity.rawJson);
+  const typeOfSetAside = samData.typeOfSetAside ?? "none";
 
   const { object } = await generateObject({
     model: chatModel,

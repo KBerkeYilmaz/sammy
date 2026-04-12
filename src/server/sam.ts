@@ -18,6 +18,7 @@ export interface SamOpportunity {
   classificationCode?: string;
   active: string;
   state?: string;
+  typeOfSetAside?: string;
   pointOfContact?: { email?: string; fullName?: string }[];
   award?: { amount?: string; awardee?: { name?: string } };
 }
@@ -35,6 +36,11 @@ export interface FetchOpportunitiesParams {
   ptype?: string;      // o=solicitation, p=presolicitation, k=combined, a=award
   naicsCode?: string;
   deptname?: string;
+}
+
+/** Type-safe accessor for Opportunity.rawJson which stores a SamOpportunity */
+export function parseSamJson(rawJson: unknown): SamOpportunity {
+  return rawJson as SamOpportunity;
 }
 
 export async function fetchOpportunities(

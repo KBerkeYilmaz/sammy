@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { FileText, ChevronDown, ChevronUp } from "lucide-react";
+import type { RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
+
+type Brief = RouterOutputs["workflow"]["getCaptureBriefs"][number];
 
 export default function BriefsPage() {
   const briefs = api.workflow.getCaptureBriefs.useQuery();
@@ -44,21 +47,6 @@ export default function BriefsPage() {
     </div>
   );
 }
-
-type Brief = {
-  id: string;
-  summary: string;
-  keyRequirements: unknown;
-  competitiveEdge: string;
-  suggestedTeam: unknown;
-  timeline: string;
-  generatedAt: Date;
-  opportunity: {
-    title: string;
-    department: string;
-    solicitationNumber: string | null;
-  };
-};
 
 function BriefCard({ brief }: { brief: Brief }) {
   const [expanded, setExpanded] = useState(false);
