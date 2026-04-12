@@ -1,5 +1,6 @@
 import {
   convertToModelMessages,
+  generateObject,
   smoothStream,
   streamText,
   tool,
@@ -12,24 +13,31 @@ import { chatModel } from "~/server/bedrock";
 import { semanticSearch, formatChunks, getOpportunityCount } from "~/server/rag";
 import { db } from "~/server/db";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const { messages } = (await req.json()) as { messages: UIMessage[] };
 
   const totalCount = await getOpportunityCount();
 
+  const scoredCount = await db.opportunityScore.count();
+
   const system =
     SCOUT_SYSTEM_PROMPT +
-    `\n\nYou currently have access to ${totalCount} federal contract opportunities in the database. ` +
-    `Use the provided tools to search for opportunities before answering. ` +
-    `Always search first — do not guess or claim you have no data without searching.`;
+    `\n\nYou currently have access to ${totalCount} federal contract opportunities in the database` +
+    (scoredCount > 0
+      ? `, ${scoredCount} of which have been AI-scored with fit recommendations.`
+      : ".") +
+    ` Use the provided tools to search for opportunities before answering. ` +
+    `Always search first — do not guess or claim you have no data without searching. ` +
+    `When users ask about pipeline, recommendations, or scoring, use the getScoredPipeline tool. ` +
+    `For deadline-sensitive questions, use the deadlineMonitor tool.`;
 
   const result = streamText({
     model: chatModel,
     system,
     messages: await convertToModelMessages(messages),
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(7),
     experimental_transform: smoothStream({
       delayInMs: 20,
       chunking: "word",
@@ -152,6 +160,360 @@ export async function POST(req: Request) {
             },
           });
           return { results: rows, count: rows.length };
+        },
+      }),
+
+      // ── Data Tools (pure Prisma queries) ──────────────────────────
+
+      getScoredPipeline: tool({
+        description:
+          "Get AI-scored opportunities grouped by recommendation (pursue/watch/skip) with fit scores and rationale. " +
+          "Use when users ask about pipeline, recommendations, what to pursue, or scored opportunities.",
+        inputSchema: z.object({
+          recommendation: z
+            .enum(["pursue", "watch", "skip", "all"])
+            .default("all")
+            .describe("Filter by recommendation type"),
+          minScore: z
+            .number()
+            .optional()
+            .describe("Minimum fit score to include"),
+        }),
+        execute: async ({ recommendation, minScore }) => {
+          const scored = await db.opportunityScore.findMany({
+            where: {
+              ...(recommendation !== "all" && { recommendation }),
+              ...(minScore && { fitScore: { gte: minScore } }),
+            },
+            include: {
+              opportunity: {
+                select: {
+                  title: true,
+                  department: true,
+                  naicsCode: true,
+                  type: true,
+                  solicitationNumber: true,
+                  responseDeadline: true,
+                  postedDate: true,
+                },
+              },
+            },
+            orderBy: { fitScore: "desc" },
+            take: 20,
+          });
+          return { results: scored, count: scored.length };
+        },
+      }),
+
+      getCaptureBrief: tool({
+        description:
+          "Get the auto-generated capture brief for a specific opportunity. " +
+          "Use when users ask about a capture brief, strategy, or detailed analysis of a specific opportunity.",
+        inputSchema: z.object({
+          opportunityId: z.string().describe("The opportunity ID"),
+        }),
+        execute: async ({ opportunityId }) => {
+          const brief = await db.captureBrief.findUnique({
+            where: { opportunityId },
+            include: {
+              opportunity: {
+                select: {
+                  title: true,
+                  department: true,
+                  solicitationNumber: true,
+                },
+              },
+            },
+          });
+          return brief ?? { error: "No capture brief found for this opportunity" };
+        },
+      }),
+
+      deadlineMonitor: tool({
+        description:
+          "Find opportunities with approaching deadlines within N days, sorted by urgency. " +
+          "Returns deadline, days remaining, fit score, and recommendation. " +
+          "Use when users ask about upcoming deadlines, urgent opportunities, or time-sensitive items.",
+        inputSchema: z.object({
+          daysAhead: z
+            .number()
+            .default(30)
+            .describe("Number of days to look ahead"),
+          recommendation: z
+            .enum(["pursue", "watch", "all"])
+            .default("all")
+            .describe("Filter by recommendation type"),
+        }),
+        execute: async ({ daysAhead, recommendation }) => {
+          const now = new Date();
+          const cutoff = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+
+          const opps = await db.opportunity.findMany({
+            where: {
+              responseDeadline: { gte: now, lte: cutoff },
+              ...(recommendation !== "all" && {
+                score: { recommendation },
+              }),
+            },
+            include: {
+              score: {
+                select: { fitScore: true, recommendation: true, rationale: true },
+              },
+            },
+            orderBy: { responseDeadline: "asc" },
+            take: 20,
+          });
+
+          return {
+            results: opps.map((o) => ({
+              title: o.title,
+              department: o.department,
+              solicitationNumber: o.solicitationNumber,
+              responseDeadline: o.responseDeadline,
+              daysRemaining: o.responseDeadline
+                ? Math.ceil(
+                    (o.responseDeadline.getTime() - now.getTime()) /
+                      (24 * 60 * 60 * 1000),
+                  )
+                : null,
+              score: o.score,
+            })),
+            count: opps.length,
+          };
+        },
+      }),
+
+      compareOpportunities: tool({
+        description:
+          "Side-by-side comparison of 2-3 opportunities analyzing fit score, requirements, timeline, contract value, and strategic recommendation. " +
+          "Use when users want to compare specific opportunities.",
+        inputSchema: z.object({
+          opportunityIds: z
+            .array(z.string())
+            .min(2)
+            .max(3)
+            .describe("2-3 opportunity IDs to compare"),
+        }),
+        execute: async ({ opportunityIds }) => {
+          const opps = await db.opportunity.findMany({
+            where: { id: { in: opportunityIds } },
+            include: {
+              score: true,
+              captureBrief: true,
+            },
+          });
+          return { results: opps, count: opps.length };
+        },
+      }),
+
+      // ── AI Tools (nested LLM calls via Bedrock) ──────────────────
+
+      analyzeRfp: tool({
+        description:
+          "Break down a government opportunity/solicitation into structured sections: key requirements, evaluation factors, compliance checklist, set-aside details, and submission requirements. " +
+          "Use when users ask to analyze, break down, or review an RFP/solicitation.",
+        inputSchema: z.object({
+          opportunityId: z
+            .string()
+            .describe("The opportunity ID to analyze"),
+        }),
+        execute: async ({ opportunityId }) => {
+          const opp = await db.opportunity.findUnique({
+            where: { id: opportunityId },
+            include: { score: true, chunks: { select: { content: true } } },
+          });
+          if (!opp) return { error: "Opportunity not found" };
+
+          const chunkText = opp.chunks.map((c) => c.content).join("\n");
+
+          const { object } = await generateObject({
+            model: chatModel,
+            schema: z.object({
+              keyRequirements: z.array(z.string()),
+              evaluationFactors: z.array(z.string()),
+              complianceChecklist: z.array(z.string()),
+              setAsideDetails: z.string(),
+              submissionRequirements: z.string(),
+              summary: z.string(),
+            }),
+            prompt: `Analyze this federal opportunity and extract structured information.
+
+OPPORTUNITY:
+- Title: ${opp.title}
+- Department: ${opp.department}
+- Type: ${opp.type}
+- NAICS: ${opp.naicsCode ?? "N/A"}
+- Solicitation: ${opp.solicitationNumber ?? "N/A"}
+- Set-aside: ${(opp.rawJson as Record<string, unknown>).typeOfSetAside ?? "N/A"}
+
+ADDITIONAL CONTEXT:
+${chunkText || "No additional text available."}
+
+Extract: key requirements, evaluation factors, compliance checklist items, set-aside details, submission requirements, and a brief summary.`,
+          });
+
+          return { opportunity: opp.title, analysis: object };
+        },
+      }),
+
+      competitiveLandscape: tool({
+        description:
+          "Analyze the competitive landscape for an opportunity: identify likely competitors from past award data, suggest differentiators, and flag teaming opportunities. " +
+          "Use when users ask about competition, competitors, or competitive strategy.",
+        inputSchema: z.object({
+          opportunityId: z
+            .string()
+            .describe("The opportunity ID to analyze"),
+        }),
+        execute: async ({ opportunityId }) => {
+          const opp = await db.opportunity.findUnique({
+            where: { id: opportunityId },
+            include: { score: true },
+          });
+          if (!opp) return { error: "Opportunity not found" };
+
+          // Cross-reference: find past awardees in same NAICS/department
+          const relatedAwards = await db.opportunity.findMany({
+            where: {
+              department: opp.department,
+              awardeeName: { not: null },
+              type: { contains: "Award", mode: "insensitive" },
+            },
+            select: {
+              title: true,
+              awardeeName: true,
+              awardAmount: true,
+              naicsCode: true,
+            },
+            take: 15,
+          });
+
+          const { object } = await generateObject({
+            model: chatModel,
+            schema: z.object({
+              likelyCompetitors: z.array(
+                z.object({ name: z.string(), reasoning: z.string() }),
+              ),
+              differentiators: z.array(z.string()),
+              teamingOpportunities: z.array(z.string()),
+              winStrategy: z.string(),
+            }),
+            prompt: `Analyze the competitive landscape for this federal opportunity.
+
+OPPORTUNITY:
+- Title: ${opp.title}
+- Department: ${opp.department}
+- NAICS: ${opp.naicsCode ?? "N/A"}
+- Type: ${opp.type}
+
+PAST AWARDS IN SAME DEPARTMENT:
+${relatedAwards.map((a) => `- ${a.awardeeName}: ${a.title} (${a.naicsCode}, $${a.awardAmount?.toLocaleString() ?? "N/A"})`).join("\n") || "No past award data available."}
+
+Based on this data, identify likely competitors, suggest differentiators, flag teaming opportunities, and recommend a win strategy.`,
+          });
+
+          return { opportunity: opp.title, landscape: object };
+        },
+      }),
+
+      generateComplianceMatrix: tool({
+        description:
+          "Generate a compliance requirements matrix for an opportunity, listing each requirement with status (met/unmet/partial) and evidence needed. " +
+          "Use when users ask for compliance matrix, requirements tracking, or compliance review.",
+        inputSchema: z.object({
+          opportunityId: z
+            .string()
+            .describe("The opportunity ID"),
+        }),
+        execute: async ({ opportunityId }) => {
+          const opp = await db.opportunity.findUnique({
+            where: { id: opportunityId },
+            include: { score: true, chunks: { select: { content: true } } },
+          });
+          if (!opp) return { error: "Opportunity not found" };
+
+          const chunkText = opp.chunks.map((c) => c.content).join("\n");
+
+          const { object } = await generateObject({
+            model: chatModel,
+            schema: z.object({
+              matrix: z.array(
+                z.object({
+                  requirement: z.string(),
+                  status: z.enum(["met", "unmet", "partial", "unknown"]),
+                  evidenceNeeded: z.string(),
+                  priority: z.enum(["high", "medium", "low"]),
+                }),
+              ),
+              overallReadiness: z.string(),
+            }),
+            prompt: `Generate a compliance requirements matrix for this federal opportunity.
+
+OPPORTUNITY:
+- Title: ${opp.title}
+- Department: ${opp.department}
+- Type: ${opp.type}
+- NAICS: ${opp.naicsCode ?? "N/A"}
+
+ADDITIONAL CONTEXT:
+${chunkText || "No additional text available."}
+
+For each identifiable requirement, assess compliance status from a typical small business GovCon perspective, note what evidence would be needed, and assign priority. Provide an overall readiness assessment.`,
+          });
+
+          return { opportunity: opp.title, compliance: object };
+        },
+      }),
+
+      draftProposalOutline: tool({
+        description:
+          "Generate a proposal outline for an opportunity including executive summary draft, technical approach structure, management approach, and past performance section guidance. " +
+          "Use when users ask to draft a proposal, create a proposal outline, or start proposal writing.",
+        inputSchema: z.object({
+          opportunityId: z
+            .string()
+            .describe("The opportunity ID"),
+        }),
+        execute: async ({ opportunityId }) => {
+          const opp = await db.opportunity.findUnique({
+            where: { id: opportunityId },
+            include: {
+              score: true,
+              captureBrief: true,
+              chunks: { select: { content: true } },
+            },
+          });
+          if (!opp) return { error: "Opportunity not found" };
+
+          const { object } = await generateObject({
+            model: chatModel,
+            schema: z.object({
+              executiveSummary: z.string(),
+              technicalApproach: z.array(
+                z.object({ section: z.string(), content: z.string() }),
+              ),
+              managementApproach: z.string(),
+              pastPerformance: z.string(),
+              keyPersonnel: z.array(z.string()),
+              pricingStrategy: z.string(),
+            }),
+            prompt: `Draft a proposal outline for this federal opportunity.
+
+OPPORTUNITY:
+- Title: ${opp.title}
+- Department: ${opp.department}
+- Type: ${opp.type}
+- NAICS: ${opp.naicsCode ?? "N/A"}
+- Solicitation: ${opp.solicitationNumber ?? "N/A"}
+
+${opp.score ? `AI SCORING:\n- Fit: ${opp.score.fitScore}/100\n- Strengths: ${JSON.stringify(opp.score.keyStrengths)}\n- Risks: ${JSON.stringify(opp.score.risks)}` : ""}
+
+${opp.captureBrief ? `CAPTURE BRIEF:\n- Summary: ${opp.captureBrief.summary}\n- Competitive Edge: ${opp.captureBrief.competitiveEdge}` : ""}
+
+Create a complete proposal outline with: executive summary draft, technical approach sections, management approach, past performance guidance, key personnel roles, and pricing strategy notes.`,
+          });
+
+          return { opportunity: opp.title, proposal: object };
         },
       }),
     },
