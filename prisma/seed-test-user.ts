@@ -6,9 +6,14 @@
  * - User: demo@sammy.dev / sammy-demo-2026
  * - Assigns all existing ScoringProfile + ChatSession records to this user
  */
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-const db = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+const db = new PrismaClient({ adapter });
 
 const DEMO_EMAIL = "demo@sammy.dev";
 const DEMO_NAME = "Demo User";
@@ -18,16 +23,17 @@ async function main() {
   let user = await db.user.findUnique({ where: { email: DEMO_EMAIL } });
 
   if (!user) {
-    // Create user via direct Prisma insert — Better Auth stores the
-    // password hash in the Account table with providerId: "credential".
-    // We use the crypto API to hash with bcrypt-compatible scrypt since
-    // better-auth uses its own hashing internally. Instead, we'll create
-    // the user record and let them sign up via the UI on first use.
-    // For the seed, we create the user + account using better-auth's
-    // server-side signUp API.
+    // Use Better Auth's server-side signUp API to create the user properly.
+    // We dynamically import the auth config which handles password hashing
+    // and creates both User + Account records.
+    const { betterAuth } = await import("better-auth");
+    const { prismaAdapter } = await import("better-auth/adapters/prisma");
 
-    // Import the auth instance to use its internal API
-    const { auth } = await import("../src/server/better-auth/config");
+    const auth = betterAuth({
+      baseURL: "http://localhost:3000",
+      database: prismaAdapter(db, { provider: "postgresql" }),
+      emailAndPassword: { enabled: true },
+    });
 
     const result = await auth.api.signUpEmail({
       body: {
