@@ -5,7 +5,13 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 
 export const auth = betterAuth({
-  baseURL: env.NEXT_PUBLIC_APP_URL,
+  baseURL: {
+    allowedHosts: [
+      new URL(env.NEXT_PUBLIC_APP_URL).host,
+      "*.vercel.app",
+    ],
+  },
+  trustedOrigins: [env.NEXT_PUBLIC_APP_URL, "https://*.vercel.app"],
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
