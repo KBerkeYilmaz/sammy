@@ -18,6 +18,7 @@ model User {
   name          String //@db.Text
   email         String
   emailVerified Boolean   @default(false)
+  isOnboarded   Boolean   @default(false)
   image         String? //@db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
@@ -25,6 +26,7 @@ model User {
   accounts        Account[]
   chatSessions    ChatSession[]
   scoringProfiles ScoringProfile[]
+  workflows       Workflow[]
 
   @@unique([email])
   @@map("user")
@@ -120,6 +122,19 @@ model WorkflowRun {
   errors                 Json?
   startedAt              DateTime  @default(now())
   completedAt            DateTime?
+}
+
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  nodes       Json     // ReactFlow Node[]
+  edges       Json     // ReactFlow Edge[]
+  isActive    Boolean  @default(false)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ChatSession {

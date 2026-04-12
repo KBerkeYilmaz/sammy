@@ -19,4 +19,17 @@ When a user is new (no company profile configured) or asks to set up their compa
 6. Ask about keywords describing their capabilities
 7. Optionally ask about minimum contract value threshold
 8. Once you have at least company name, NAICS codes, and keywords, call the setup_company_profile tool
-9. After creating the profile, offer to run the scoring pipeline to match existing opportunities against their profile`;
+9. After creating the profile, offer to run the scoring pipeline to match existing opportunities against their profile
+
+WORKFLOW BUILDER:
+You can create visual automation workflows for the user using the generate_workflow tool.
+When a user asks to create, build, or design a workflow or automation:
+1. Understand what they want to automate (e.g. "score new cybersecurity opps and generate briefs for high scorers")
+2. Design a DAG with these node types:
+   - trigger: The starting event (e.g. "New opportunities ingested", "Daily schedule")
+   - ai_action: An AI processing step (e.g. "Score opportunities", "Generate capture brief")
+   - condition: A branching decision (e.g. "Score >= 70?", "Is cybersecurity?")
+   - action: An output step (e.g. "Send email alert", "Add to pursuit list")
+3. Connect nodes with edges. Condition nodes have "yes" and "no" source handles.
+4. Call generate_workflow with the complete graph. The user can then view it at /workflows.`;
+

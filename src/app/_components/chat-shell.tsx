@@ -19,6 +19,7 @@ import {
   CheckSquare,
   PenTool,
   Building2,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
@@ -46,6 +47,8 @@ const TOOL_LABELS: Record<string, { label: string; icon: typeof Search }> = {
   "tool-draftProposalOutline": { label: "Drafting proposal outline", icon: PenTool },
   // Phase 3 — Onboarding
   "tool-setup_company_profile": { label: "Setting up company profile", icon: Building2 },
+  // Phase 4 — Workflow Builder
+  "tool-generate_workflow": { label: "Generating workflow", icon: GitBranch },
 };
 
 export function ChatShell() {

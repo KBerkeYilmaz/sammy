@@ -13,6 +13,7 @@ import {
   History,
   LogOut,
   User,
+  Workflow,
 } from "lucide-react";
 import { authClient } from "~/server/better-auth/client";
 import {
@@ -106,6 +107,23 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Automation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/workflows" />}
+                  isActive={pathname.startsWith("/workflows")}
+                >
+                  <Workflow />
+                  <span>Workflows</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
