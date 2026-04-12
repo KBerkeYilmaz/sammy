@@ -5,11 +5,6 @@ import { DM_Sans, JetBrains_Mono } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { TooltipProvider } from "~/components/ui/tooltip";
-import { AppSidebar } from "~/app/_components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "~/components/ui/sidebar";
 
 export const metadata: Metadata = {
   title: "Sammy — Federal Contract Intelligence",
@@ -36,12 +31,7 @@ export default function RootLayout({
     <html lang="en" className={`h-full ${dmSans.variable} ${jbMono.variable}`}>
       <body className="h-full">
         <TRPCReactProvider>
-          <TooltipProvider>
-            <SidebarProvider>
-              <AppSidebar />
-              <SidebarInset>{children}</SidebarInset>
-            </SidebarProvider>
-          </TooltipProvider>
+          <TooltipProvider>{children}</TooltipProvider>
         </TRPCReactProvider>
       </body>
     </html>
