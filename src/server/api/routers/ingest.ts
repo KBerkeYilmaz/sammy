@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { fetchOpportunities } from "~/server/sam";
 import { ingestOpportunities } from "~/server/ingestion";
 import { runPipeline } from "~/server/agents/pipeline";
 
 export const ingestRouter = createTRPCRouter({
-  trigger: publicProcedure
+  trigger: protectedProcedure
     .input(
       z.object({
         postedFrom: z.string().optional(), // MM/DD/YYYY
@@ -40,7 +40,7 @@ export const ingestRouter = createTRPCRouter({
       };
     }),
 
-  stats: publicProcedure.query(async ({ ctx }) => {
+  stats: protectedProcedure.query(async ({ ctx }) => {
     const [opportunityCount, chunkCount, latest] = await Promise.all([
       ctx.db.opportunity.count(),
       ctx.db.opportunityChunk.count(),

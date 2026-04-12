@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const chatRouter = createTRPCRouter({
-  send: publicProcedure
+  send: protectedProcedure
     .input(
       z.object({
         sessionId: z.string().optional(),
@@ -10,10 +10,11 @@ export const chatRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // TODO: Phase 2 — embed query, vector search, call Bedrock Claude, stream response
       const session = input.sessionId
         ? await ctx.db.chatSession.findUnique({ where: { id: input.sessionId } })
-        : await ctx.db.chatSession.create({ data: { messages: [] } });
+        : await ctx.db.chatSession.create({
+            data: { messages: [], userId: ctx.session.user.id },
+          });
 
       return {
         sessionId: session?.id,
@@ -21,8 +22,9 @@ export const chatRouter = createTRPCRouter({
       };
     }),
 
-  sessions: publicProcedure.query(async ({ ctx }) => {
+  sessions: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.chatSession.findMany({
+      where: { userId: ctx.session.user.id },
       orderBy: { updatedAt: "desc" },
       take: 20,
     });

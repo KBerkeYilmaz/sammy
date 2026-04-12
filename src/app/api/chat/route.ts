@@ -14,12 +14,25 @@ import { chatModel } from "~/server/bedrock";
 import { semanticSearch, formatChunks, getOpportunityCount } from "~/server/rag";
 import { db } from "~/server/db";
 import { auth } from "~/server/better-auth";
+import { rateLimit } from "~/lib/rate-limit";
 
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return new Response("Unauthorized", { status: 401 });
+
+  // Rate limit: 20 messages per minute per user
+  const { success } = rateLimit({
+    key: `chat:${session.user.id}`,
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (!success) {
+    return new Response("Too many requests. Please wait a moment.", {
+      status: 429,
+    });
+  }
 
   const { messages } = (await req.json()) as { messages: UIMessage[] };
 

@@ -52,7 +52,7 @@ export const workflowsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id, nodes, edges, ...rest } = input;
       return ctx.db.workflow.update({
-        where: { id },
+        where: { id, userId: ctx.session.user.id },
         data: {
           ...rest,
           ...(nodes && { nodes: nodes as Prisma.InputJsonValue }),
@@ -65,7 +65,7 @@ export const workflowsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.workflow.delete({
-        where: { id: input.id },
+        where: { id: input.id, userId: ctx.session.user.id },
       });
     }),
 
