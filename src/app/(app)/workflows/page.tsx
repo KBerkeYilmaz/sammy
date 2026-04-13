@@ -3,7 +3,15 @@
 import { useCallback, useRef, useState } from "react";
 import type { Node, Edge } from "@xyflow/react";
 import { WorkflowList } from "~/app/workflows/_components/workflow-list";
-import { WorkflowCanvas } from "~/app/workflows/_components/workflow-canvas";
+import dynamic from "next/dynamic";
+
+const WorkflowCanvas = dynamic(
+  () =>
+    import("~/app/workflows/_components/workflow-canvas").then(
+      (mod) => mod.WorkflowCanvas,
+    ),
+  { ssr: false, loading: () => <div className="h-full animate-pulse bg-muted rounded-lg" /> },
+);
 import { api } from "~/trpc/react";
 
 export default function WorkflowsPage() {
