@@ -1,7 +1,6 @@
-import { chatRouter } from "~/server/api/routers/chat";
 import { ingestRouter } from "~/server/api/routers/ingest";
 import { opportunitiesRouter } from "~/server/api/routers/opportunities";
-import { workflowRouter } from "~/server/api/routers/workflow";
+import { pipelineRouter } from "~/server/api/routers/pipeline";
 import { workflowsRouter } from "~/server/api/routers/workflows";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -13,8 +12,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
   opportunities: opportunitiesRouter,
   ingest: ingestRouter,
-  chat: chatRouter,
-  workflow: workflowRouter,
+  pipeline: pipelineRouter,
   workflows: workflowsRouter,
 });
 

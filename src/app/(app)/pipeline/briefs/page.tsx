@@ -6,10 +6,10 @@ import type { RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 
-type Brief = RouterOutputs["workflow"]["getCaptureBriefs"][number];
+type Brief = RouterOutputs["pipeline"]["getCaptureBriefs"][number];
 
 export default function BriefsPage() {
-  const briefs = api.workflow.getCaptureBriefs.useQuery();
+  const briefs = api.pipeline.getCaptureBriefs.useQuery();
 
   if (briefs.isLoading) {
     return (

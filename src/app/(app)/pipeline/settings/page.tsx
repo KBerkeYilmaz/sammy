@@ -8,11 +8,12 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 
 export default function SettingsPage() {
-  const profile = api.workflow.getScoringProfile.useQuery();
-  const update = api.workflow.updateScoringProfile.useMutation({
-    onSuccess: () => void profile.refetch(),
+  const utils = api.useUtils();
+  const profile = api.pipeline.getScoringProfile.useQuery();
+  const update = api.pipeline.updateScoringProfile.useMutation({
+    onSuccess: () => void utils.pipeline.getScoringProfile.invalidate(),
   });
-  const rescoreAll = api.workflow.runPipeline.useMutation();
+  const rescoreAll = api.pipeline.runPipeline.useMutation();
 
   const [form, setForm] = useState({
     targetNaics: "",

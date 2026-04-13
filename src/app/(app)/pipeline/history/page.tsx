@@ -5,7 +5,7 @@ import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 
 export default function HistoryPage() {
-  const history = api.workflow.getRunHistory.useQuery();
+  const history = api.pipeline.getRunHistory.useQuery();
 
   if (history.isLoading) {
     return (

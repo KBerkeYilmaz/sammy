@@ -7,13 +7,13 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { KanbanColumn } from "./_components/kanban-column";
 
-export type ScoredItem = RouterOutputs["workflow"]["getPipeline"]["pursue"][number];
+export type ScoredItem = RouterOutputs["pipeline"]["getPipeline"]["pursue"][number];
 
 export default function PipelinePage() {
   const [runLog, setRunLog] = useState<string | null>(null);
 
-  const pipeline = api.workflow.getPipeline.useQuery();
-  const runPipeline = api.workflow.runPipeline.useMutation({
+  const pipeline = api.pipeline.getPipeline.useQuery();
+  const runPipeline = api.pipeline.runPipeline.useMutation({
     onSuccess: () => {
       setRunLog("Pipeline started — scoring opportunities in the background...");
       // Poll for updates

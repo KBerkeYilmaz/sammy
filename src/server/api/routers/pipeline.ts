@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { runPipeline } from "~/server/agents/pipeline";
+import { scoringProfileInputSchema } from "~/server/agents/schemas";
 
-export const workflowRouter = createTRPCRouter({
+export const pipelineRouter = createTRPCRouter({
   // Fire-and-forget pipeline run
   runPipeline: protectedProcedure
     .input(z.object({ rescore: z.boolean().optional() }).optional())
@@ -51,12 +52,8 @@ export const workflowRouter = createTRPCRouter({
   // Update scoring profile — verify ownership
   updateScoringProfile: protectedProcedure
     .input(
-      z.object({
+      scoringProfileInputSchema.extend({
         id: z.string(),
-        targetNaics: z.array(z.string()),
-        targetDepartments: z.array(z.string()),
-        preferredSetAsides: z.array(z.string()),
-        keywords: z.array(z.string()),
         minContractValue: z.number().nullable(),
         pursueThreshold: z.number().int().min(0).max(100).default(70),
         watchThreshold: z.number().int().min(0).max(100).default(40),
