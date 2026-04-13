@@ -16,6 +16,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { authClient } from "~/server/better-auth/client";
+import { getQueryClient } from "~/trpc/react";
 import {
   Sidebar,
   SidebarContent,
@@ -145,6 +146,7 @@ export function AppSidebar() {
               className="text-muted-foreground"
               onClick={async () => {
                 await authClient.signOut();
+                getQueryClient().clear();
                 router.push("/sign-in");
               }}
             >
