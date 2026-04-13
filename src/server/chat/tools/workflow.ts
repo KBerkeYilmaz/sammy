@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
+import { workflowNodeSchema, workflowEdgeSchema } from "~/server/agents/schemas";
 
 export function createWorkflowTools(db: PrismaClient, userId: string) {
   return {
@@ -14,24 +15,8 @@ export function createWorkflowTools(db: PrismaClient, userId: string) {
       inputSchema: z.object({
         name: z.string().describe("Workflow name"),
         description: z.string().optional().describe("Brief description"),
-        nodes: z.array(
-          z.object({
-            id: z.string(),
-            type: z.enum(["trigger", "ai_action", "condition", "action"]),
-            data: z.object({
-              label: z.string(),
-              description: z.string().optional(),
-            }),
-          }),
-        ),
-        edges: z.array(
-          z.object({
-            id: z.string(),
-            source: z.string(),
-            target: z.string(),
-            sourceHandle: z.string().optional(),
-          }),
-        ),
+        nodes: z.array(workflowNodeSchema),
+        edges: z.array(workflowEdgeSchema),
       }),
       execute: async ({ name, description, nodes, edges }) => {
         const workflow = await db.workflow.create({

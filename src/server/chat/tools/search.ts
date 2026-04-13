@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { semanticSearch, formatChunks } from "~/server/rag";
+import { opportunitySelectDetail, opportunitySelectFilter } from "~/server/queries";
 
 export function createSearchTools(db: PrismaClient) {
   return {
@@ -37,21 +38,7 @@ export function createSearchTools(db: PrismaClient) {
           },
           take: limit,
           orderBy: { postedDate: "desc" },
-          select: {
-            title: true,
-            solicitationNumber: true,
-            department: true,
-            subTier: true,
-            type: true,
-            naicsCode: true,
-            postedDate: true,
-            responseDeadline: true,
-            active: true,
-            contactName: true,
-            contactEmail: true,
-            state: true,
-            noticeId: true,
-          },
+          select: opportunitySelectDetail,
         });
         return { results: rows, count: rows.length };
       },
@@ -105,17 +92,7 @@ export function createSearchTools(db: PrismaClient) {
           },
           take: limit,
           orderBy: { postedDate: "desc" },
-          select: {
-            title: true,
-            solicitationNumber: true,
-            department: true,
-            type: true,
-            naicsCode: true,
-            postedDate: true,
-            responseDeadline: true,
-            active: true,
-            state: true,
-          },
+          select: opportunitySelectFilter,
         });
         return { results: rows, count: rows.length };
       },

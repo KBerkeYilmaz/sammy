@@ -1,6 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
+import { recommendationWithAllEnum, recommendationFilterEnum } from "~/server/agents/schemas";
+import { opportunitySelectSummary, opportunitySelectBasic } from "~/server/queries";
 
 export function createPipelineTools(db: PrismaClient) {
   return {
@@ -9,8 +11,7 @@ export function createPipelineTools(db: PrismaClient) {
         "Get AI-scored opportunities grouped by recommendation (pursue/watch/skip) with fit scores and rationale. " +
         "Use when users ask about pipeline, recommendations, what to pursue, or scored opportunities.",
       inputSchema: z.object({
-        recommendation: z
-          .enum(["pursue", "watch", "skip", "all"])
+        recommendation: recommendationWithAllEnum
           .default("all")
           .describe("Filter by recommendation type"),
         minScore: z
@@ -25,17 +26,7 @@ export function createPipelineTools(db: PrismaClient) {
             ...(minScore && { fitScore: { gte: minScore } }),
           },
           include: {
-            opportunity: {
-              select: {
-                title: true,
-                department: true,
-                naicsCode: true,
-                type: true,
-                solicitationNumber: true,
-                responseDeadline: true,
-                postedDate: true,
-              },
-            },
+            opportunity: { select: opportunitySelectSummary },
           },
           orderBy: { fitScore: "desc" },
           take: 20,
@@ -55,13 +46,7 @@ export function createPipelineTools(db: PrismaClient) {
         const brief = await db.captureBrief.findUnique({
           where: { opportunityId },
           include: {
-            opportunity: {
-              select: {
-                title: true,
-                department: true,
-                solicitationNumber: true,
-              },
-            },
+            opportunity: { select: opportunitySelectBasic },
           },
         });
         return brief ?? { error: "No capture brief found for this opportunity" };
@@ -78,8 +63,7 @@ export function createPipelineTools(db: PrismaClient) {
           .number()
           .default(30)
           .describe("Number of days to look ahead"),
-        recommendation: z
-          .enum(["pursue", "watch", "all"])
+        recommendation: recommendationFilterEnum
           .default("all")
           .describe("Filter by recommendation type"),
       }),
