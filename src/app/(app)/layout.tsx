@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "~/server/better-auth";
-import { db } from "~/server/db";
 import { AppSidebar } from "~/app/_components/app-sidebar";
 import {
   SidebarInset,
@@ -13,16 +12,8 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth.api.getSession({ headers: await headers() });
 
-  // Redirect non-onboarded users to the onboarding flow
-  if (session?.user) {
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { isOnboarded: true },
-    });
-
-    if (user && !user.isOnboarded) {
-      redirect("/onboarding");
-    }
+  if (session?.user && !session.user.isOnboarded) {
+    redirect("/onboarding");
   }
 
   return (
