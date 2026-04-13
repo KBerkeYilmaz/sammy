@@ -3,19 +3,21 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { runPipeline } from "~/server/agents/pipeline";
 
 export const workflowRouter = createTRPCRouter({
-  // Fire-and-forget pipeline run on unscored opportunities
-  runPipeline: protectedProcedure.mutation(async () => {
-    const result = runPipeline();
-    // Fire and forget — return immediately, pipeline runs in background
-    result.catch(console.error);
-    return { status: "started" };
-  }),
+  // Fire-and-forget pipeline run
+  runPipeline: protectedProcedure
+    .input(z.object({ rescore: z.boolean().optional() }).optional())
+    .mutation(async ({ input }) => {
+      const result = runPipeline({ rescore: input?.rescore });
+      // Fire and forget — return immediately, pipeline runs in background
+      result.catch(console.error);
+      return { status: "started" };
+    }),
 
   // Score a single opportunity synchronously
   scoreOne: protectedProcedure
     .input(z.object({ opportunityId: z.string() }))
     .mutation(async ({ input }) => {
-      return runPipeline([input.opportunityId]);
+      return runPipeline({ opportunityIds: [input.opportunityId] });
     }),
 
   // Scored opportunities grouped by recommendation
@@ -56,6 +58,8 @@ export const workflowRouter = createTRPCRouter({
         preferredSetAsides: z.array(z.string()),
         keywords: z.array(z.string()),
         minContractValue: z.number().nullable(),
+        pursueThreshold: z.number().int().min(0).max(100).default(70),
+        watchThreshold: z.number().int().min(0).max(100).default(40),
       }),
     )
     .mutation(async ({ ctx, input }) => {

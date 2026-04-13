@@ -24,13 +24,27 @@ const DEFAULT_PROFILE = {
     "IT modernization",
   ],
   minContractValue: 100000,
+  pursueThreshold: 70,
+  watchThreshold: 40,
 };
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function runPipeline(opportunityIds?: string[]) {
+export async function runPipeline(opts?: {
+  opportunityIds?: string[];
+  rescore?: boolean;
+}) {
+  // 0. If rescoring, clear existing scores and briefs first
+  if (opts?.rescore) {
+    const where = opts.opportunityIds
+      ? { opportunityId: { in: opts.opportunityIds } }
+      : {};
+    await db.captureBrief.deleteMany({ where });
+    await db.opportunityScore.deleteMany({ where });
+  }
+
   // 1. Get or create active scoring profile
   let profile = await db.scoringProfile.findFirst({
     where: { isActive: true },
@@ -40,11 +54,12 @@ export async function runPipeline(opportunityIds?: string[]) {
     profile = await db.scoringProfile.create({ data: DEFAULT_PROFILE });
   }
 
-  // 2. Get unscored opportunities
+  // 2. Get unscored, non-awarded opportunities
   const opportunities = await db.opportunity.findMany({
     where: {
-      ...(opportunityIds ? { id: { in: opportunityIds } } : {}),
+      ...(opts?.opportunityIds ? { id: { in: opts.opportunityIds } } : {}),
       score: null,
+      awardeeName: null, // Don't score already-awarded contracts
     },
     orderBy: { postedDate: "desc" },
   });
@@ -56,7 +71,7 @@ export async function runPipeline(opportunityIds?: string[]) {
   // 3. Create workflow run
   const run = await db.workflowRun.create({
     data: {
-      type: opportunityIds ? "scoring" : "full_pipeline",
+      type: opts?.opportunityIds ? "scoring" : "full_pipeline",
       status: "running",
       results: { scored: 0, pursue: 0, watch: 0, skip: 0, briefsGenerated: 0 },
     },
@@ -77,7 +92,12 @@ export async function runPipeline(opportunityIds?: string[]) {
             data: {
               opportunityId: opp.id,
               profileId: profile.id,
-              ...scoreResult,
+              fitScore: scoreResult.fitScore,
+              recommendation: scoreResult.recommendation,
+              rationale: scoreResult.rationale,
+              keyStrengths: scoreResult.keyStrengths,
+              risks: scoreResult.risks,
+              criteriaScores: scoreResult.criteriaScores,
             },
           });
 

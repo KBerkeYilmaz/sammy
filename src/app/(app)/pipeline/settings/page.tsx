@@ -20,6 +20,8 @@ export default function SettingsPage() {
     preferredSetAsides: "",
     keywords: "",
     minContractValue: "",
+    pursueThreshold: "70",
+    watchThreshold: "40",
   });
 
   useEffect(() => {
@@ -30,6 +32,8 @@ export default function SettingsPage() {
         preferredSetAsides: (profile.data.preferredSetAsides as string[]).join(", "),
         keywords: (profile.data.keywords as string[]).join(", "),
         minContractValue: profile.data.minContractValue?.toString() ?? "",
+        pursueThreshold: profile.data.pursueThreshold.toString(),
+        watchThreshold: profile.data.watchThreshold.toString(),
       });
     }
   }, [profile.data]);
@@ -43,6 +47,8 @@ export default function SettingsPage() {
       preferredSetAsides: form.preferredSetAsides.split(",").map((s) => s.trim()).filter(Boolean),
       keywords: form.keywords.split(",").map((s) => s.trim()).filter(Boolean),
       minContractValue: form.minContractValue ? Number(form.minContractValue) : null,
+      pursueThreshold: Number(form.pursueThreshold),
+      watchThreshold: Number(form.watchThreshold),
     });
   }
 
@@ -110,6 +116,40 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <div className="space-y-5 rounded-lg border p-5">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium">Recommendation Thresholds</h3>
+          <p className="text-[10px] text-muted-foreground">
+            Opportunities with a fit score at or above the pursue threshold are recommended for pursuit.
+            Scores between watch and pursue are watchlisted. Below watch threshold are skipped.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs font-medium">Pursue Threshold</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={form.pursueThreshold}
+              onChange={(e) => setForm({ ...form, pursueThreshold: e.target.value })}
+              className="mt-1.5"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-medium">Watch Threshold</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={form.watchThreshold}
+              onChange={(e) => setForm({ ...form, watchThreshold: e.target.value })}
+              className="mt-1.5"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2">
         <Button onClick={handleSave} disabled={update.isPending}>
           {update.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
@@ -117,7 +157,7 @@ export default function SettingsPage() {
         </Button>
         <Button
           variant="outline"
-          onClick={() => rescoreAll.mutate()}
+          onClick={() => rescoreAll.mutate({ rescore: true })}
           disabled={rescoreAll.isPending}
         >
           {rescoreAll.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : null}

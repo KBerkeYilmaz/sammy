@@ -65,6 +65,7 @@ model OpportunityChunk {
   id            String      @id @default(cuid())
   opportunityId String
   content       String
+  embedding     Unsupported("vector(1024)")?
   metadata      Json?
   createdAt     DateTime    @default(now())
 
@@ -79,8 +80,10 @@ model ScoringProfile {
   targetDepartments Json     // string[]
   preferredSetAsides Json    // string[]
   keywords          Json     // string[]
-  minContractValue  Float?
-  userId            String?
+  minContractValue   Float?
+  pursueThreshold    Int      @default(70)  // fitScore >= this → "pursue"
+  watchThreshold     Int      @default(40)  // fitScore >= this → "watch", below → "skip"
+  userId             String?
   user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -94,6 +97,7 @@ model OpportunityScore {
   rationale      String
   keyStrengths   Json     // string[]
   risks          Json     // string[]
+  criteriaScores Json?    // Weighted sub-scores breakdown
   profileId      String
   scoredAt       DateTime @default(now())
 
