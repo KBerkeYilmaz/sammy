@@ -1,4 +1,4 @@
-import { HydrateClient } from "~/trpc/server";
+import { api, HydrateClient } from "~/trpc/server";
 import { OpportunityExplorer } from "./_components/opportunity-explorer";
 
 export const metadata = {
@@ -6,7 +6,9 @@ export const metadata = {
   description: "Browse and filter federal contract opportunities from SAM.gov",
 };
 
-export default function ExplorePage() {
+export default async function ExplorePage() {
+  void api.opportunities.list.prefetch({ limit: 20, offset: 0 });
+
   return (
     <HydrateClient>
       <div className="flex flex-1 flex-col">

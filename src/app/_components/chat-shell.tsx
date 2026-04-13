@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ArrowUp,
+  Loader2,
   Search,
   Filter,
   Brain,
@@ -171,7 +172,7 @@ export function ChatShell() {
             disabled={!input.trim() || isLoading}
             className="size-11 shrink-0 rounded-xl"
           >
-            {isLoading ? <Spinner /> : <ArrowUp className="size-4" />}
+            {isLoading ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
           </Button>
         </form>
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
@@ -297,47 +298,33 @@ function EmptyState({
   );
 }
 
-function LoadingEllipsis() {
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      <span className="size-1 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
-      <span className="size-1 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
-      <span className="size-1 animate-bounce rounded-full bg-current" />
-    </span>
-  );
-}
-
 function ThinkingDots() {
   return (
-    <span className="flex items-center gap-1">
-      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+    <span className="inline-flex items-center gap-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="size-1.5 rounded-full bg-muted-foreground animate-bounce"
+          style={{ animationDelay: `${i * 150}ms` }}
+        />
+      ))}
     </span>
   );
 }
 
-function Spinner() {
+function LoadingEllipsis() {
   return (
-    <svg
-      className="size-4 animate-spin"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 22 8.954 22 12h-4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
+    <span className="inline-flex items-center gap-0.5 text-muted-foreground">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="animate-bounce text-[10px] leading-none"
+          style={{ animationDelay: `${i * 150}ms` }}
+        >
+          .
+        </span>
+      ))}
+    </span>
   );
 }
+
