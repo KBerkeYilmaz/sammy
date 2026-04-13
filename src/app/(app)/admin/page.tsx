@@ -5,7 +5,7 @@ import { Database, Layers, RefreshCw, Terminal } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { SidebarTrigger } from "~/components/ui/sidebar";
+import { PageHeader } from "~/components/page-header";
 
 export default function AdminPage() {
   const [postedFrom, setPostedFrom] = useState("01/01/2025");
@@ -27,12 +27,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <div className="h-4 w-px bg-border" />
-        <h1 className="text-sm font-semibold">Admin</h1>
-      </header>
+      <PageHeader title="Admin" />
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-6 py-8 space-y-8">
