@@ -3,8 +3,9 @@ import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { recommendationWithAllEnum, recommendationFilterEnum } from "~/server/agents/schemas";
 import { opportunitySelectSummary, opportunitySelectBasic } from "~/server/queries";
+import { getUserProfileIds } from "~/server/queries";
 
-export function createPipelineTools(db: PrismaClient) {
+export function createPipelineTools(db: PrismaClient, userId: string) {
   return {
     getScoredPipeline: tool({
       description:
@@ -20,8 +21,10 @@ export function createPipelineTools(db: PrismaClient) {
           .describe("Minimum fit score to include"),
       }),
       execute: async ({ recommendation, minScore }) => {
+        const profileIds = await getUserProfileIds(db, userId);
         const scored = await db.opportunityScore.findMany({
           where: {
+            profileId: { in: profileIds },
             ...(recommendation !== "all" && { recommendation }),
             ...(minScore && { fitScore: { gte: minScore } }),
           },
@@ -43,8 +46,9 @@ export function createPipelineTools(db: PrismaClient) {
         opportunityId: z.string().describe("The opportunity ID"),
       }),
       execute: async ({ opportunityId }) => {
-        const brief = await db.captureBrief.findUnique({
-          where: { opportunityId },
+        const profileIds = await getUserProfileIds(db, userId);
+        const brief = await db.captureBrief.findFirst({
+          where: { opportunityId, profileId: { in: profileIds } },
           include: {
             opportunity: { select: opportunitySelectBasic },
           },
@@ -68,6 +72,7 @@ export function createPipelineTools(db: PrismaClient) {
           .describe("Filter by recommendation type"),
       }),
       execute: async ({ daysAhead, recommendation }) => {
+        const profileIds = await getUserProfileIds(db, userId);
         const now = new Date();
         const cutoff = new Date(
           now.getTime() + daysAhead * 24 * 60 * 60 * 1000,
@@ -77,16 +82,18 @@ export function createPipelineTools(db: PrismaClient) {
           where: {
             responseDeadline: { gte: now, lte: cutoff },
             ...(recommendation !== "all" && {
-              score: { recommendation },
+              scores: { some: { recommendation, profileId: { in: profileIds } } },
             }),
           },
           include: {
-            score: {
+            scores: {
+              where: { profileId: { in: profileIds } },
               select: {
                 fitScore: true,
                 recommendation: true,
                 rationale: true,
               },
+              take: 1,
             },
           },
           orderBy: { responseDeadline: "asc" },
@@ -105,7 +112,7 @@ export function createPipelineTools(db: PrismaClient) {
                     (24 * 60 * 60 * 1000),
                 )
               : null,
-            score: o.score,
+            score: o.scores[0] ?? null,
           })),
           count: opps.length,
         };
@@ -124,11 +131,12 @@ export function createPipelineTools(db: PrismaClient) {
           .describe("2-3 opportunity IDs to compare"),
       }),
       execute: async ({ opportunityIds }) => {
+        const profileIds = await getUserProfileIds(db, userId);
         const opps = await db.opportunity.findMany({
           where: { id: { in: opportunityIds } },
           include: {
-            score: true,
-            captureBrief: true,
+            scores: { where: { profileId: { in: profileIds } }, take: 1 },
+            captureBriefs: { where: { profileId: { in: profileIds } }, take: 1 },
           },
         });
         return { results: opps, count: opps.length };

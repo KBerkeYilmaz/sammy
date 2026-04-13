@@ -1,4 +1,13 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
+
+/** Get all scoring profile IDs belonging to a user */
+export async function getUserProfileIds(db: PrismaClient, userId: string) {
+  const profiles = await db.scoringProfile.findMany({
+    where: { userId },
+    select: { id: true },
+  });
+  return profiles.map((p) => p.id);
+}
 
 /** Reusable Prisma select objects for Opportunity queries across tools and routers */
 

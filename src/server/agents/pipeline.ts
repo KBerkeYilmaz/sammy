@@ -35,30 +35,37 @@ function sleep(ms: number) {
 export async function runPipeline(opts?: {
   opportunityIds?: string[];
   rescore?: boolean;
+  userId?: string;
 }) {
-  // 0. If rescoring, clear existing scores and briefs first
+  // 1. Get or create active scoring profile — scoped to user when provided
+  const existingProfile = await db.scoringProfile.findFirst({
+    where: {
+      isActive: true,
+      ...(opts?.userId && { userId: opts.userId }),
+    },
+  });
+
+  const profile =
+    existingProfile ??
+    (await db.scoringProfile.create({
+      data: { ...DEFAULT_PROFILE, ...(opts?.userId && { userId: opts.userId }) },
+    }));
+
+  // 2. If rescoring, clear THIS profile's scores and briefs
   if (opts?.rescore) {
-    const where = opts.opportunityIds
-      ? { opportunityId: { in: opts.opportunityIds } }
-      : {};
+    const where = {
+      profileId: profile.id,
+      ...(opts.opportunityIds && { opportunityId: { in: opts.opportunityIds } }),
+    };
     await db.captureBrief.deleteMany({ where });
     await db.opportunityScore.deleteMany({ where });
   }
 
-  // 1. Get or create active scoring profile
-  let profile = await db.scoringProfile.findFirst({
-    where: { isActive: true },
-  });
-
-  if (!profile) {
-    profile = await db.scoringProfile.create({ data: DEFAULT_PROFILE });
-  }
-
-  // 2. Get unscored, non-awarded opportunities
+  // 3. Get opportunities not yet scored BY THIS PROFILE
   const opportunities = await db.opportunity.findMany({
     where: {
       ...(opts?.opportunityIds ? { id: { in: opts.opportunityIds } } : {}),
-      score: null,
+      scores: { none: { profileId: profile.id } },
       awardeeName: null, // Don't score already-awarded contracts
     },
     orderBy: { postedDate: "desc" },
@@ -68,12 +75,13 @@ export async function runPipeline(opts?: {
     return { runId: null, message: "No unscored opportunities found" };
   }
 
-  // 3. Create workflow run
+  // 3. Create workflow run — tagged to user
   const run = await db.workflowRun.create({
     data: {
       type: opts?.opportunityIds ? "scoring" : "full_pipeline",
       status: "running",
       results: { scored: 0, pursue: 0, watch: 0, skip: 0, briefsGenerated: 0 },
+      ...(opts?.userId && { userId: opts.userId }),
     },
   });
 
@@ -110,6 +118,7 @@ export async function runPipeline(opts?: {
             await db.captureBrief.create({
               data: {
                 opportunityId: opp.id,
+                profileId: profile.id,
                 ...briefData,
               },
             });

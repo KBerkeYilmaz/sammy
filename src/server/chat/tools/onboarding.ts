@@ -42,7 +42,7 @@ export function createOnboardingTools(db: PrismaClient, userId: string) {
         });
 
         const unscoredCount = await db.opportunity.count({
-          where: { score: null },
+          where: { scores: { none: { profileId: profile.id } } },
         });
 
         return {

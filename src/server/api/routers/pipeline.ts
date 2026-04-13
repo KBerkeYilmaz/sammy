@@ -2,28 +2,32 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { runPipeline } from "~/server/agents/pipeline";
 import { scoringProfileInputSchema } from "~/server/agents/schemas";
+import { getUserProfileIds } from "~/server/queries";
 
 export const pipelineRouter = createTRPCRouter({
-  // Fire-and-forget pipeline run
+  // Fire-and-forget pipeline run — scoped to user's profile
   runPipeline: protectedProcedure
     .input(z.object({ rescore: z.boolean().optional() }).optional())
-    .mutation(async ({ input }) => {
-      const result = runPipeline({ rescore: input?.rescore });
-      // Fire and forget — return immediately, pipeline runs in background
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const result = runPipeline({ rescore: input?.rescore, userId });
       result.catch(console.error);
       return { status: "started" };
     }),
 
-  // Score a single opportunity synchronously
+  // Score a single opportunity synchronously — scoped to user's profile
   scoreOne: protectedProcedure
     .input(z.object({ opportunityId: z.string() }))
-    .mutation(async ({ input }) => {
-      return runPipeline({ opportunityIds: [input.opportunityId] });
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      return runPipeline({ opportunityIds: [input.opportunityId], userId });
     }),
 
-  // Scored opportunities grouped by recommendation
+  // Scored opportunities grouped by recommendation — scoped to user's profiles
   getPipeline: protectedProcedure.query(async ({ ctx }) => {
+    const profileIds = await getUserProfileIds(ctx.db, ctx.session.user.id);
     const scored = await ctx.db.opportunityScore.findMany({
+      where: { profileId: { in: profileIds } },
       include: { opportunity: true },
       orderBy: { fitScore: "desc" },
     });
@@ -34,9 +38,11 @@ export const pipelineRouter = createTRPCRouter({
     };
   }),
 
-  // All capture briefs with opportunity data
+  // Capture briefs — scoped to user's profiles
   getCaptureBriefs: protectedProcedure.query(async ({ ctx }) => {
+    const profileIds = await getUserProfileIds(ctx.db, ctx.session.user.id);
     return ctx.db.captureBrief.findMany({
+      where: { profileId: { in: profileIds } },
       include: { opportunity: true },
       orderBy: { generatedAt: "desc" },
     });
@@ -67,18 +73,21 @@ export const pipelineRouter = createTRPCRouter({
       });
     }),
 
-  // Last 20 workflow runs
+  // Last 20 workflow runs — scoped to current user
   getRunHistory: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.workflowRun.findMany({
+      where: { userId: ctx.session.user.id },
       orderBy: { startedAt: "desc" },
       take: 20,
     });
   }),
 
-  // Single run for polling progress
+  // Single run for polling progress — verify ownership
   getRunById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.workflowRun.findUnique({ where: { id: input.id } });
+      return ctx.db.workflowRun.findFirst({
+        where: { id: input.id, userId: ctx.session.user.id },
+      });
     }),
 });

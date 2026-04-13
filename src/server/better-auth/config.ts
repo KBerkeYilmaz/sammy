@@ -8,10 +8,10 @@ export const auth = betterAuth({
   baseURL: {
     allowedHosts: [
       new URL(env.NEXT_PUBLIC_APP_URL).host,
-      "sammy-*.vercel.app",
+      "sammy-rose.vercel.app",
     ],
   },
-  trustedOrigins: [env.NEXT_PUBLIC_APP_URL, "https://sammy-*.vercel.app"],
+  trustedOrigins: [env.NEXT_PUBLIC_APP_URL, "https://sammy-rose.vercel.app"],
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),

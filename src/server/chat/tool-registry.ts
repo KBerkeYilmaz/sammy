@@ -8,8 +8,8 @@ import { createOnboardingTools } from "./tools/onboarding";
 export function createTools(ctx: { db: PrismaClient; userId: string }) {
   return {
     ...createSearchTools(ctx.db),
-    ...createPipelineTools(ctx.db),
-    ...createAnalysisTools(ctx.db),
+    ...createPipelineTools(ctx.db, ctx.userId),
+    ...createAnalysisTools(ctx.db, ctx.userId),
     ...createWorkflowTools(ctx.db, ctx.userId),
     ...createOnboardingTools(ctx.db, ctx.userId),
   };
