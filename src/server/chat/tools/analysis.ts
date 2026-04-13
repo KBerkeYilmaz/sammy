@@ -3,8 +3,9 @@ import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { chatModel } from "~/server/bedrock";
 import { parseSamJson } from "~/server/sam";
+import { getUserProfileIds } from "~/server/queries";
 
-export function createAnalysisTools(db: PrismaClient) {
+export function createAnalysisTools(db: PrismaClient, userId: string) {
   return {
     analyzeRfp: tool({
       description:
@@ -18,7 +19,7 @@ export function createAnalysisTools(db: PrismaClient) {
       execute: async ({ opportunityId }) => {
         const opp = await db.opportunity.findUnique({
           where: { id: opportunityId },
-          include: { score: true, chunks: { select: { content: true } } },
+          include: { scores: { take: 1 }, chunks: { select: { content: true } } },
         });
         if (!opp) return { error: "Opportunity not found" };
 
@@ -67,7 +68,7 @@ Extract: key requirements, evaluation factors, compliance checklist items, set-a
       execute: async ({ opportunityId }) => {
         const opp = await db.opportunity.findUnique({
           where: { id: opportunityId },
-          include: { score: true },
+          include: { scores: { take: 1 } },
         });
         if (!opp) return { error: "Opportunity not found" };
 
@@ -124,7 +125,7 @@ Based on this data, identify likely competitors, suggest differentiators, flag t
       execute: async ({ opportunityId }) => {
         const opp = await db.opportunity.findUnique({
           where: { id: opportunityId },
-          include: { score: true, chunks: { select: { content: true } } },
+          include: { scores: { take: 1 }, chunks: { select: { content: true } } },
         });
         if (!opp) return { error: "Opportunity not found" };
 
@@ -169,15 +170,19 @@ For each identifiable requirement, assess compliance status from a typical small
         opportunityId: z.string().describe("The opportunity ID"),
       }),
       execute: async ({ opportunityId }) => {
+        const profileIds = await getUserProfileIds(db, userId);
         const opp = await db.opportunity.findUnique({
           where: { id: opportunityId },
           include: {
-            score: true,
-            captureBrief: true,
+            scores: { where: { profileId: { in: profileIds } }, take: 1 },
+            captureBriefs: { where: { profileId: { in: profileIds } }, take: 1 },
             chunks: { select: { content: true } },
           },
         });
         if (!opp) return { error: "Opportunity not found" };
+
+        const score = opp.scores[0];
+        const brief = opp.captureBriefs[0];
 
         const { object } = await generateObject({
           model: chatModel,
@@ -200,9 +205,9 @@ OPPORTUNITY:
 - NAICS: ${opp.naicsCode ?? "N/A"}
 - Solicitation: ${opp.solicitationNumber ?? "N/A"}
 
-${opp.score ? `AI SCORING:\n- Fit: ${opp.score.fitScore}/100\n- Strengths: ${JSON.stringify(opp.score.keyStrengths)}\n- Risks: ${JSON.stringify(opp.score.risks)}` : ""}
+${score ? `AI SCORING:\n- Fit: ${score.fitScore}/100\n- Strengths: ${JSON.stringify(score.keyStrengths)}\n- Risks: ${JSON.stringify(score.risks)}` : ""}
 
-${opp.captureBrief ? `CAPTURE BRIEF:\n- Summary: ${opp.captureBrief.summary}\n- Competitive Edge: ${opp.captureBrief.competitiveEdge}` : ""}
+${brief ? `CAPTURE BRIEF:\n- Summary: ${brief.summary}\n- Competitive Edge: ${brief.competitiveEdge}` : ""}
 
 Create a complete proposal outline with: executive summary draft, technical approach sections, management approach, past performance guidance, key personnel roles, and pricing strategy notes.`,
         });

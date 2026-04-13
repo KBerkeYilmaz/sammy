@@ -13,6 +13,7 @@ import { auth } from "~/server/better-auth";
 import { rateLimit } from "~/lib/rate-limit";
 import { createTools } from "~/server/chat/tool-registry";
 import { buildSystemPrompt } from "~/server/chat/system-prompt";
+import { getUserProfileIds } from "~/server/queries";
 
 export const maxDuration = 120;
 
@@ -34,9 +35,13 @@ export async function POST(req: Request) {
 
   const { messages } = (await req.json()) as { messages: UIMessage[] };
 
+  const profileIds = await getUserProfileIds(db, session.user.id);
+
   const [totalCount, scoredCount, activeProfile] = await Promise.all([
     getOpportunityCount(),
-    db.opportunityScore.count(),
+    db.opportunityScore.count({
+      where: { profileId: { in: profileIds } },
+    }),
     db.scoringProfile.findFirst({
       where: { userId: session.user.id, isActive: true },
     }),
@@ -57,7 +62,7 @@ export async function POST(req: Request) {
     model: chatModel,
     system,
     messages: await convertToModelMessages(messages),
-    stopWhen: stepCountIs(7),
+    stopWhen: stepCountIs(12),
     experimental_transform: smoothStream({
       delayInMs: 20,
       chunking: "word",

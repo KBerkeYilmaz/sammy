@@ -9,11 +9,14 @@ function zodSchema(tool: { inputSchema: unknown }): z.ZodTypeAny {
 
 function createMockDb() {
   return {
+    scoringProfile: {
+      findMany: vi.fn().mockResolvedValue([{ id: "profile-1" }]),
+    },
     opportunityScore: {
       findMany: vi.fn().mockResolvedValue([]),
     },
     captureBrief: {
-      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
     },
     opportunity: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -34,7 +37,7 @@ describe("createPipelineTools", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     db = createMockDb();
-    tools = createPipelineTools(db);
+    tools = createPipelineTools(db, "test-user-id");
   });
 
   describe("getScoredPipeline", () => {
@@ -52,7 +55,10 @@ describe("createPipelineTools", () => {
       const callArgs = mockFindMany.mock.calls[0]![0] as {
         where: Record<string, unknown>;
       };
-      expect(callArgs.where).toEqual({ recommendation: "pursue" });
+      expect(callArgs.where).toEqual({
+        profileId: { in: ["profile-1"] },
+        recommendation: "pursue",
+      });
     });
 
     it("should not filter recommendation when set to 'all'", async () => {
@@ -69,7 +75,9 @@ describe("createPipelineTools", () => {
       const callArgs = mockFindMany.mock.calls[0]![0] as {
         where: Record<string, unknown>;
       };
-      expect(callArgs.where).toEqual({});
+      expect(callArgs.where).toEqual({
+        profileId: { in: ["profile-1"] },
+      });
     });
 
     it("should apply minScore filter when provided", async () => {
@@ -86,7 +94,10 @@ describe("createPipelineTools", () => {
       const callArgs = mockFindMany.mock.calls[0]![0] as {
         where: Record<string, unknown>;
       };
-      expect(callArgs.where).toEqual({ fitScore: { gte: 70 } });
+      expect(callArgs.where).toEqual({
+        profileId: { in: ["profile-1"] },
+        fitScore: { gte: 70 },
+      });
     });
 
     it("should combine recommendation and minScore filters", async () => {
@@ -111,6 +122,7 @@ describe("createPipelineTools", () => {
         where: Record<string, unknown>;
       };
       expect(callArgs.where).toEqual({
+        profileId: { in: ["profile-1"] },
         recommendation: "pursue",
         fitScore: { gte: 80 },
       });
@@ -132,9 +144,9 @@ describe("createPipelineTools", () => {
 
   describe("getCaptureBrief", () => {
     it("should return the brief when found", async () => {
-      const mockFindUnique = vi.mocked(
-        (db as unknown as { captureBrief: { findUnique: ReturnType<typeof vi.fn> } })
-          .captureBrief.findUnique,
+      const mockFindFirst = vi.mocked(
+        (db as unknown as { captureBrief: { findFirst: ReturnType<typeof vi.fn> } })
+          .captureBrief.findFirst,
       );
       const brief = {
         id: "b1",
@@ -142,15 +154,15 @@ describe("createPipelineTools", () => {
         summary: "Test brief",
         opportunity: { title: "Test", department: "DoD", solicitationNumber: "W911" },
       };
-      mockFindUnique.mockResolvedValue(brief);
+      mockFindFirst.mockResolvedValue(brief);
 
       const result = await tools.getCaptureBrief.execute!(
         { opportunityId: "opp-1" },
         executeOpts,
       );
 
-      expect(mockFindUnique).toHaveBeenCalledWith({
-        where: { opportunityId: "opp-1" },
+      expect(mockFindFirst).toHaveBeenCalledWith({
+        where: { opportunityId: "opp-1", profileId: { in: ["profile-1"] } },
         include: {
           opportunity: {
             select: {
@@ -226,7 +238,7 @@ describe("createPipelineTools", () => {
           department: "DoD",
           solicitationNumber: "W911-25",
           responseDeadline: new Date("2025-06-04T00:00:00Z"),
-          score: { fitScore: 90, recommendation: "pursue", rationale: "Good fit" },
+          scores: [{ fitScore: 90, recommendation: "pursue", rationale: "Good fit" }],
         },
       ]);
 
@@ -255,7 +267,7 @@ describe("createPipelineTools", () => {
           department: "DoD",
           solicitationNumber: "X-1",
           responseDeadline: null,
-          score: null,
+          scores: [],
         },
       ]);
 
@@ -283,7 +295,9 @@ describe("createPipelineTools", () => {
       const callArgs = mockFindMany.mock.calls[0]![0] as {
         where: Record<string, unknown>;
       };
-      expect(callArgs.where).toHaveProperty("score", { recommendation: "pursue" });
+      expect(callArgs.where).toHaveProperty("scores", {
+        some: { recommendation: "pursue", profileId: { in: ["profile-1"] } },
+      });
     });
 
     it("should default daysAhead to 30 in input schema", () => {
@@ -300,8 +314,8 @@ describe("createPipelineTools", () => {
           .opportunity.findMany,
       );
       const opps = [
-        { id: "opp-1", title: "First", score: { fitScore: 80 }, captureBrief: null },
-        { id: "opp-2", title: "Second", score: { fitScore: 60 }, captureBrief: null },
+        { id: "opp-1", title: "First", scores: [{ fitScore: 80 }], captureBriefs: [] },
+        { id: "opp-2", title: "Second", scores: [{ fitScore: 60 }], captureBriefs: [] },
       ];
       mockFindMany.mockResolvedValue(opps);
 
@@ -312,7 +326,10 @@ describe("createPipelineTools", () => {
 
       expect(mockFindMany).toHaveBeenCalledWith({
         where: { id: { in: ["opp-1", "opp-2"] } },
-        include: { score: true, captureBrief: true },
+        include: {
+          scores: { where: { profileId: { in: ["profile-1"] } }, take: 1 },
+          captureBriefs: { where: { profileId: { in: ["profile-1"] } }, take: 1 },
+        },
       });
       expect(result).toEqual({ results: opps, count: 2 });
     });

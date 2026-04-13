@@ -27,13 +27,15 @@ CREATE TABLE IF NOT EXISTS "OpportunityScore" (
   "profileId"      TEXT NOT NULL,
   "scoredAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "OpportunityScore_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "OpportunityScore_opportunityId_key" UNIQUE ("opportunityId"),
-  CONSTRAINT "OpportunityScore_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT "OpportunityScore_opportunityId_profileId_key" UNIQUE ("opportunityId", "profileId"),
+  CONSTRAINT "OpportunityScore_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "OpportunityScore_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "ScoringProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "CaptureBrief" (
   "id"              TEXT NOT NULL DEFAULT gen_random_uuid()::text,
   "opportunityId"   TEXT NOT NULL,
+  "profileId"       TEXT NOT NULL,
   "summary"         TEXT NOT NULL,
   "keyRequirements" JSONB NOT NULL,
   "competitiveEdge" TEXT NOT NULL,
@@ -41,8 +43,9 @@ CREATE TABLE IF NOT EXISTS "CaptureBrief" (
   "timeline"        TEXT NOT NULL,
   "generatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "CaptureBrief_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "CaptureBrief_opportunityId_key" UNIQUE ("opportunityId"),
-  CONSTRAINT "CaptureBrief_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT "CaptureBrief_opportunityId_profileId_key" UNIQUE ("opportunityId", "profileId"),
+  CONSTRAINT "CaptureBrief_opportunityId_fkey" FOREIGN KEY ("opportunityId") REFERENCES "Opportunity"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "CaptureBrief_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "ScoringProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "WorkflowRun" (
