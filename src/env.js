@@ -18,7 +18,7 @@ export const env = createEnv({
     SAM_GOV_API_KEY: z.string(),
     AWS_ACCESS_KEY_ID: z.string(),
     AWS_SECRET_ACCESS_KEY: z.string(),
-    AWS_REGION: z.string().default("eu-west-1"),
+    AWS_REGION: z.string().default("us-east-1"),
   },
 
   /**
