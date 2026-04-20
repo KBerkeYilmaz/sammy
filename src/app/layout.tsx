@@ -5,6 +5,7 @@ import { DM_Sans, JetBrains_Mono } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { TooltipProvider } from "~/components/ui/tooltip";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Sammy — Federal Contract Intelligence",
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body className="h-full">
         <TRPCReactProvider>
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster richColors closeButton />
         </TRPCReactProvider>
       </body>
     </html>
