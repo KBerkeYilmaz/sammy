@@ -26,5 +26,6 @@ COPY --from=builder /app/public ./public
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/ || exit 1
 
+ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 CMD ["node", "server.js"]
