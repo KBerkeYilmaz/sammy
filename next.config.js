@@ -10,6 +10,7 @@ const config = {
   turbopack: {
     root: import.meta.dirname,
   },
+  output: "standalone",
   async headers() {
     return [
       {
