@@ -1,0 +1,4 @@
+
+> @sammy/types@0.1.0 typecheck /Users/berke/Desktop/projects/sammy/packages/types
+> tsc --noEmit
+
