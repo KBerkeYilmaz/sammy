@@ -6,7 +6,7 @@ import { db } from "~/server/db";
 
 export const auth = betterAuth({
   baseURL: env.NEXT_PUBLIC_APP_URL,
-  trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
+  trustedOrigins: [env.NEXT_PUBLIC_APP_URL, ...(env.BETTER_AUTH_URL ? [env.BETTER_AUTH_URL] : [])],
   advanced: {
     // Traefik terminates SSL and forwards as HTTP internally.
     // useSecureCookies ensures the Secure flag is set even though the
