@@ -5,13 +5,14 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 
 export const auth = betterAuth({
-  baseURL: {
-    allowedHosts: [
-      new URL(env.NEXT_PUBLIC_APP_URL).host,
-      "sammy-rose.vercel.app",
-    ],
+  baseURL: env.NEXT_PUBLIC_APP_URL,
+  trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
+  advanced: {
+    // Traefik terminates SSL and forwards as HTTP internally.
+    // useSecureCookies ensures the Secure flag is set even though the
+    // internal request arrives over HTTP.
+    useSecureCookies: true,
   },
-  trustedOrigins: [env.NEXT_PUBLIC_APP_URL, "https://sammy-rose.vercel.app"],
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),

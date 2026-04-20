@@ -11,6 +11,8 @@ const config = {
     root: import.meta.dirname,
   },
   output: "standalone",
+  // Prevent Next.js from bundling pg — Prisma's native driver needs it as an external
+  serverExternalPackages: ["pg"],
   async headers() {
     return [
       {
