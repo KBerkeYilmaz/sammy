@@ -9,6 +9,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm prisma generate
+ENV SKIP_ENV_VALIDATION=true
 RUN pnpm build
 
 FROM node:22-alpine AS runner
