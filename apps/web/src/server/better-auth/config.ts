@@ -8,6 +8,7 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: [appUrl, ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : [])],
+  secret: process.env.BETTER_AUTH_SECRET,
   advanced: {
     // Traefik terminates SSL and forwards as HTTP internally.
     // useSecureCookies ensures the Secure flag is set even though the
