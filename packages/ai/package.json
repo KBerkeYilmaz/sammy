@@ -1,0 +1,20 @@
+{
+  "name": "@sammy/ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^4.0.93",
+    "@aws-sdk/client-bedrock-runtime": "^3.1029.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.8.2"
+  }
+}
