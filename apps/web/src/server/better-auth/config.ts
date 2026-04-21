@@ -5,15 +5,10 @@ import { db } from "~/server/db";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-// Bracket notation prevents the bundler from inlining this as undefined at build time.
-// With dot notation (process.env.BETTER_AUTH_SECRET), Turbopack replaces it with the
-// build-time value (undefined during Docker build). Bracket notation forces a runtime lookup.
-const secret = process.env["BETTER_AUTH_SECRET"] as string | undefined;
-
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: [appUrl, ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : [])],
-  secret,
+  secret: process.env.BETTER_AUTH_SECRET,
   advanced: {
     // Traefik terminates SSL and forwards as HTTP internally.
     // useSecureCookies ensures the Secure flag is set even though the
