@@ -30,8 +30,6 @@ COPY --from=pruner /app/tsconfig.base.json ./tsconfig.base.json
 # 5. Build
 ENV SKIP_ENV_VALIDATION=true
 ENV NEXT_PUBLIC_APP_URL=https://sammyfe.berkeyilmaz.dev
-ARG BETTER_AUTH_SECRET
-ENV BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 RUN pnpm turbo run build --filter=@sammy/web
 
 # ---- Production runner ----
