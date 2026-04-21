@@ -24,6 +24,8 @@ RUN pnpm install --frozen-lockfile
 
 # 4. Copy full source (changes often → invalidates only this + build layer)
 COPY --from=pruner /app/out/full/ .
+# tsconfig.base.json is not in any package.json so turbo prune doesn't include it
+COPY --from=pruner /app/tsconfig.base.json ./tsconfig.base.json
 
 # 5. Build
 ENV SKIP_ENV_VALIDATION=true
