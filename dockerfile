@@ -8,20 +8,24 @@ RUN npm install -g turbo@^2
 COPY . .
 RUN turbo prune @sammy/web --docker
 
-# ---- Install deps from pruned lockfile (cached until deps change) ----
-FROM base AS installer
-WORKDIR /app
-COPY --from=pruner /app/out/json/ .
-COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=pruner /app/out/full/packages/db/prisma ./packages/db/prisma/
-RUN pnpm install --frozen-lockfile
-
-# ---- Build ----
+# ---- Install deps + build (single stage for pnpm symlink safety) ----
 FROM base AS builder
 WORKDIR /app
-COPY --from=installer /app/node_modules ./node_modules
-COPY --from=pruner /app/out/full/ .
+
+# 1. Copy package.json files + lockfile (changes rarely → cached layer)
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# 2. Copy prisma schema so postinstall `prisma generate` can run
+COPY --from=pruner /app/out/full/packages/db/prisma ./packages/db/prisma/
+
+# 3. Install deps (this layer is cached until package.json or lockfile changes)
 RUN pnpm install --frozen-lockfile
+
+# 4. Copy full source (changes often → invalidates only this + build layer)
+COPY --from=pruner /app/out/full/ .
+
+# 5. Build
 ENV SKIP_ENV_VALIDATION=true
 ENV NEXT_PUBLIC_APP_URL=https://sammy.berkeyilmaz.dev
 RUN pnpm turbo run build --filter=@sammy/web
