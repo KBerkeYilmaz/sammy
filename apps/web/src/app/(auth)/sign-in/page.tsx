@@ -1,7 +1,7 @@
 /* eslint-disable react/no-children-prop */
 "use client";
 
-import { useState } from "react";
+import { useState, useLayoutEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
@@ -32,7 +32,18 @@ const signInSchema = z.object({
 
 export default function SignInPage() {
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (!isPending && session) {
+      router.replace("/");
+    }
+  }, [isPending, session, router]);
+  
+  if (!isPending && session) {
+    return null;
+  }
 
   const form = useForm({
     defaultValues: {
@@ -58,6 +69,7 @@ export default function SignInPage() {
       router.push("/");
     },
   });
+
 
   return (
     <Card className="w-full max-w-sm">

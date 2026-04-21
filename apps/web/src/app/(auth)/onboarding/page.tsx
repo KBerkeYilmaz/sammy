@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { authClient } from "~/server/better-auth/client";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -24,6 +26,7 @@ const STEP_TITLES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [step, setStep] = useState(0);
   const [companyName, setCompanyName] = useState("");
   const [naics, setNaics] = useState("");
@@ -31,6 +34,16 @@ export default function OnboardingPage() {
   const [setAsides, setSetAsides] = useState("");
   const [keywords, setKeywords] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!isPending && !session) {
+      router.replace("/sign-in");
+    }
+  }, [isPending, session, router]);
+
+  if (isPending || !session) {
+    return null;
+  }
 
   async function handleFinish() {
     setLoading(true);
@@ -47,8 +60,13 @@ export default function OnboardingPage() {
         }),
       });
       if (res.ok) {
+        toast.success("Company profile created!");
         router.push("/");
+      } else {
+        toast.error("Failed to create company profile. Please try again.");
       }
+    } catch {
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -3,14 +3,20 @@
  * for Docker builds.
  */
 import "./src/env.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 /** @type {import("next").NextConfig} */
 const config = {
   reactCompiler: true,
   turbopack: {
-    root: import.meta.dirname,
+    root: __dirname,
   },
   output: "standalone",
+  // Point tracing root to monorepo root so workspace packages are included in standalone
+  outputFileTracingRoot: path.join(__dirname, "../../"),
   // Prevent Next.js from bundling pg — Prisma's native driver needs it as an external
   serverExternalPackages: ["pg"],
   async headers() {

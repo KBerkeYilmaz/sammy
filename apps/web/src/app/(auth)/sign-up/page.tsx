@@ -1,7 +1,7 @@
 /* eslint-disable react/no-children-prop */
 "use client";
 
-import { useState } from "react";
+import { useState, useLayoutEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
@@ -40,7 +40,18 @@ const signUpSchema = z.object({
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (!isPending && session) {
+      router.replace("/");
+    }
+  }, [isPending, session, router]);
+
+  if (!isPending && session) {
+    return null;
+  }
 
   const form = useForm({
     defaultValues: {
