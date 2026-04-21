@@ -5,10 +5,14 @@ import { db } from "~/server/db";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+// DEBUG: temporary hardcoded fallback to isolate the issue
+const secret = process.env.BETTER_AUTH_SECRET ?? "REMOVE_ME_debug_fallback_secret_32chars_long!!";
+console.log("[auth-debug] secret source:", process.env.BETTER_AUTH_SECRET ? "env" : "fallback", "len:", secret.length);
+
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: [appUrl, ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : [])],
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret,
   advanced: {
     // Traefik terminates SSL and forwards as HTTP internally.
     // useSecureCookies ensures the Secure flag is set even though the
