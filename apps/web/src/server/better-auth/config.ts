@@ -5,9 +5,10 @@ import { db } from "~/server/db";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-// DEBUG: temporary hardcoded fallback to isolate the issue
-const secret = process.env.BETTER_AUTH_SECRET ?? "REMOVE_ME_debug_fallback_secret_32chars_long!!";
-console.log("[auth-debug] secret source:", process.env.BETTER_AUTH_SECRET ? "env" : "fallback", "len:", secret.length);
+// Bracket notation prevents the bundler from inlining this as undefined at build time.
+// With dot notation (process.env.BETTER_AUTH_SECRET), Turbopack replaces it with the
+// build-time value (undefined during Docker build). Bracket notation forces a runtime lookup.
+const secret = process.env["BETTER_AUTH_SECRET"] as string | undefined;
 
 export const auth = betterAuth({
   baseURL: appUrl,
