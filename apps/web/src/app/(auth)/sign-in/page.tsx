@@ -35,16 +35,6 @@ export default function SignInPage() {
   const { data: session, isPending } = authClient.useSession();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  useLayoutEffect(() => {
-    if (!isPending && session) {
-      router.replace("/");
-    }
-  }, [isPending, session, router]);
-  
-  if (!isPending && session) {
-    return null;
-  }
-
   const form = useForm({
     defaultValues: {
       email: "",

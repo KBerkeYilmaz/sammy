@@ -35,16 +35,6 @@ export default function OnboardingPage() {
   const [keywords, setKeywords] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useLayoutEffect(() => {
-    if (!isPending && !session) {
-      router.replace("/sign-in");
-    }
-  }, [isPending, session, router]);
-
-  if (isPending || !session) {
-    return null;
-  }
-
   async function handleFinish() {
     setLoading(true);
     try {
