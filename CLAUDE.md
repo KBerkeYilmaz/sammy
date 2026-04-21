@@ -1,37 +1,69 @@
-# Forge — AI-Optimized Next.js 16 Boilerplate
+# Sammy — GovCon Opportunity Intelligence
 
-**Stack:** Next.js 16 · tRPC v11 · Prisma v7 · Better Auth · Tailwind v4 · shadcn/ui · TypeScript strict · pnpm
+**Stack:** Next.js 16 · tRPC v11 · Prisma v7 · Better Auth · Tailwind v4 · shadcn/ui · TypeScript strict · pnpm · Turborepo
+
+## Monorepo Architecture
+
+```
+sammy/                          # Turborepo monorepo root
+├── apps/
+│   ├── web/                    # @sammy/web — Next.js 16 app (Turbopack)
+│   └── pipeline/               # @sammy/pipeline — Express service (stub, n8n coming)
+├── packages/
+│   ├── db/                     # @sammy/db — Prisma schema + client singleton
+│   ├── ai/                     # @sammy/ai — Bedrock provider config (chat + embeddings)
+│   └── types/                  # @sammy/types — Shared domain types (pipeline jobs, webhooks)
+├── turbo.json                  # Task pipeline (build, dev, typecheck, db:*)
+├── pnpm-workspace.yaml         # Workspace: apps/* + packages/*
+└── tsconfig.base.json          # Shared TS config extended by all packages
+```
 
 ## Key Commands
 ```
-pnpm dev            # Start dev server (Turbopack)
-pnpm build          # Production build
-pnpm typecheck      # tsc --noEmit
-pnpm format         # Prettier
-pnpm test           # Vitest unit tests
-pnpm test:e2e       # Playwright E2E
-pnpm db:generate    # prisma migrate dev (requires DATABASE_URL)
-pnpm db:push        # prisma db push
-pnpm db:studio      # Prisma Studio
+pnpm dev                        # Start all apps (web + pipeline) via Turbo
+pnpm build                      # Production build (all packages)
+pnpm typecheck                  # tsc --noEmit (all packages)
+pnpm format                     # Prettier
+pnpm test                       # Vitest unit tests
+pnpm test:e2e                   # Playwright E2E
+pnpm --filter @sammy/web dev    # Start only the web app
+pnpm --filter @sammy/pipeline dev  # Start only the pipeline service
+pnpm --filter @sammy/db db:generate  # Prisma generate
+pnpm --filter @sammy/db db:push     # Prisma db push
+pnpm --filter @sammy/db db:studio   # Prisma Studio
 ```
 
-## Project Structure
+## apps/web — Next.js App Structure
 ```
-src/
+apps/web/src/
 ├── app/                        # Next.js App Router (pages, layouts, API routes)
 │   └── api/auth/[...all]/      # Better Auth handler
 ├── server/
 │   ├── api/routers/            # tRPC routers (one file per domain)
 │   ├── api/trpc.ts             # publicProcedure / protectedProcedure
 │   ├── better-auth/            # auth config, client, server helpers
-│   └── db.ts                   # Prisma client singleton
+│   ├── bedrock.ts              # Re-exports from @sammy/ai
+│   ├── db.ts                   # Prisma client (lazy init for Turbopack compat)
+│   └── sam.ts                  # SAM.gov API client
 ├── components/                 # Shared UI components
+├── proxy.ts                    # Next.js 16 proxy (replaces middleware.ts)
+├── empty.ts                    # Browser stub for Node.js built-ins
+├── env.js                      # t3-env validation (runs at startup via next.config.js)
 ├── lib/forge.ts                # forge.config.ts type definitions
 └── trpc/                       # tRPC React client setup
-prisma/schema.prisma            # Prisma schema (postgresql)
-prisma.config.ts                # Prisma v7 datasource config
-forge.config.ts                 # Adapter configuration (read before generating code)
 ```
+
+## Turbopack Browser Bundle Workarounds
+
+tRPC's type import chain (`trpc/react.tsx → root.ts → trpc.ts → db.ts / better-auth`) pulls server modules into the browser bundle for evaluation. These workarounds are required:
+
+- **`next.config.js`** — `turbopack.resolveAlias` stubs `dns/net/tls/fs` with `{ browser: "./src/empty.ts" }`
+- **`db.ts`, `config.ts`, `sam.ts`** — Use `process.env` directly instead of `~/env` (t3-env throws in client context)
+- **`db.ts`** — Lazy init: skips PrismaClient creation when `DATABASE_URL` is absent (browser eval)
+- **`trpc.ts`** — `allowOutsideOfServer: true` suppresses tRPC v11's `typeof window` check
+- **Env validation still runs** — `next.config.js` imports `env.js` at startup, validating all vars before any request
+
+**IMPORTANT:** Do NOT add `import { env } from "~/env"` to any file reachable from the tRPC type import chain. Use `process.env` directly in `src/server/` files that are transitively imported by `trpc/react.tsx`.
 
 ## forge.config.ts — Read This First
 Before writing code, check `forge.config.ts` to understand active adapters:
@@ -63,13 +95,13 @@ const { data: session } = authClient.useSession()
 
 ## tRPC Pattern
 ```typescript
-// Add to src/server/api/routers/[name].ts
+// Add to apps/web/src/server/api/routers/[name].ts
 export const myRouter = createTRPCRouter({
   list: publicProcedure
     .input(z.object({ limit: z.number().default(10) }))
     .query(({ ctx, input }) => ctx.db.myModel.findMany({ take: input.limit })),
 })
-// Register in src/server/api/root.ts
+// Register in apps/web/src/server/api/root.ts
 ```
 
 ## Next.js 16 API Index
@@ -90,7 +122,7 @@ IMPORTANT: Prefer retrieval-led reasoning — read the referenced Next.js docs b
 | `Suspense` | Wrap async Server Components for streaming | https://nextjs.org/docs/app/building-your-application/routing/loading-ui-and-streaming |
 
 ## Security Rules
-- NEVER hardcode secrets — use env vars validated in `src/env.js`
+- NEVER hardcode secrets — use env vars validated in `apps/web/src/env.js`
 - ALL user inputs must be validated with Zod v4 before processing
 - ALL API mutations must check auth via `protectedProcedure` or `auth.api.getSession()`
 - NEVER log tokens, passwords, or PII
@@ -102,8 +134,8 @@ IMPORTANT: Prefer retrieval-led reasoning — read the referenced Next.js docs b
 - TypeScript strict — no `any`, prefer `unknown` with type guards
 - Server Components by default; add `"use client"` only when needed (hooks, event handlers)
 - Co-locate tests: `Component.tsx` + `Component.test.tsx`
-- Import alias: `~/` maps to `src/`
-- shadcn/ui components live in `src/components/ui/`
+- Import alias: `~/` maps to `apps/web/src/`
+- shadcn/ui components live in `apps/web/src/components/ui/`
 - Zod schemas defined close to where they're used, exported if reused
 
 ## Verification Checklist
@@ -155,24 +187,29 @@ Before marking a task complete:
 
 ## Sammy — Data Models
 
-Three models live in `prisma/schema.prisma` (in addition to Better Auth models):
+Models live in `packages/db/prisma/schema.prisma` (in addition to Better Auth models):
 
 | Model | Purpose |
 |-------|---------|
 | `Opportunity` | Raw SAM.gov opportunity data. `noticeId` is the unique external key. |
 | `OpportunityChunk` | Text chunks derived from an Opportunity. Has a `embedding vector(1024)` column added via raw SQL (not in schema). |
+| `OpportunityScore` | AI-scored opportunity fit per `ScoringProfile`. `fitScore`, `recommendation` (pursue/watch/skip). |
+| `ScoringProfile` | User-defined scoring criteria (NAICS codes, keywords, thresholds). Multi-tenant via `userId`. |
+| `CaptureBrief` | AI-generated capture brief for a scored opportunity. |
 | `ChatSession` | Persists chat history as a JSON array of messages. |
+| `Workflow` | User-defined automation workflow (nodes/edges JSON). |
+| `WorkflowRun` | Execution log for a workflow run. |
 
-**pgvector column** — NOT in Prisma schema. Added manually after `pnpm db:push`:
+**pgvector column** — NOT in Prisma schema. Added manually after `pnpm --filter @sammy/db db:push`:
 ```bash
-psql $DATABASE_URL -f prisma/migrations/add_pgvector.sql
+psql $DATABASE_URL -f packages/db/prisma/migrations/add_pgvector.sql
 ```
 
 ---
 
 ## Sammy — AWS Bedrock Service
 
-Location: `src/server/bedrock.ts`
+Provider config lives in `packages/ai/` (`@sammy/ai`), re-exported in `apps/web/src/server/bedrock.ts`.
 
 ```typescript
 import { embedText, chatCompletion } from "~/server/bedrock"
@@ -186,7 +223,7 @@ const stream = await chatCompletion(SCOUT_SYSTEM_PROMPT, messages)
 
 - **Embeddings model:** `amazon.titan-embed-text-v2:0` (1024 dims, normalized)
 - **Chat model:** `anthropic.claude-sonnet-4-20250514-v1:0` (streaming via `InvokeModelWithResponseStreamCommand`)
-- **Credentials:** read from `env.AWS_ACCESS_KEY_ID`, `env.AWS_SECRET_ACCESS_KEY`, `env.AWS_REGION`
+- **Credentials:** read from `process.env.AWS_ACCESS_KEY_ID`, `process.env.AWS_SECRET_ACCESS_KEY`, `process.env.AWS_REGION`
 
 ---
 
@@ -221,9 +258,11 @@ You are NOT a lawyer. You ARE a research assistant helping users navigate the fe
 
 ## Sammy — Environment Variables
 
-Add to `.env` (and register in `src/env.js` under `server`):
+Add to `apps/web/.env` (and register in `apps/web/src/env.js` under `server`):
 
 ```env
+DATABASE_URL=postgresql://...
+BETTER_AUTH_SECRET=...
 SAM_GOV_API_KEY=your_sam_gov_api_key
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
@@ -236,6 +275,7 @@ AWS_REGION=us-east-1
 
 | Router | File | Key procedures |
 |--------|------|---------------|
-| `opportunities` | `src/server/api/routers/opportunities.ts` | `list` (paginated + filtered), `getById` |
-| `ingest` | `src/server/api/routers/ingest.ts` | `trigger` (SAM.gov fetch + embed), `stats` |
-| `chat` | `src/server/api/routers/chat.ts` | `send` (RAG pipeline), `sessions` |
+| `opportunities` | `apps/web/src/server/api/routers/opportunities.ts` | `list` (paginated + filtered), `getById` |
+| `ingest` | `apps/web/src/server/api/routers/ingest.ts` | `trigger` (SAM.gov fetch + embed), `stats` |
+| `pipeline` | `apps/web/src/server/api/routers/pipeline.ts` | `runPipeline`, `scoreOne`, `getPipeline`, `getCaptureBriefs`, `getScoringProfile`, `updateScoringProfile`, `getRunHistory`, `getRunById` |
+| `workflows` | `apps/web/src/server/api/routers/workflows.ts` | `list`, `getById`, `create`, `update`, `delete`, `toggleActive` |
