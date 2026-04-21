@@ -46,6 +46,10 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  */
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
+  // Turbopack pulls this module into the browser bundle via the tRPC type
+  // import chain (react.tsx → root.ts → trpc.ts). The code never runs
+  // client-side, but tRPC's `typeof window` check fires during evaluation.
+  allowOutsideOfServer: true,
   errorFormatter({ shape, error }) {
     return {
       ...shape,

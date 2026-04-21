@@ -1,4 +1,3 @@
-import { env } from "~/env";
 
 const SAM_API_BASE = "https://api.sam.gov/prod/opportunities/v2/search";
 
@@ -47,7 +46,7 @@ export async function fetchOpportunities(
   params: FetchOpportunitiesParams = {},
 ): Promise<{ opportunities: SamOpportunity[]; total: number }> {
   const query = new URLSearchParams({
-    api_key: env.SAM_GOV_API_KEY,
+    api_key: process.env.SAM_GOV_API_KEY ?? "",
     limit: String(params.limit ?? 100),
     offset: String(params.offset ?? 0),
     ...(params.postedFrom && { postedFrom: params.postedFrom }),

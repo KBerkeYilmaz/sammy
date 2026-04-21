@@ -1,12 +1,13 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
-import { env } from "~/env";
 import { db } from "~/server/db";
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export const auth = betterAuth({
-  baseURL: env.NEXT_PUBLIC_APP_URL,
-  trustedOrigins: [env.NEXT_PUBLIC_APP_URL, ...(env.BETTER_AUTH_URL ? [env.BETTER_AUTH_URL] : [])],
+  baseURL: appUrl,
+  trustedOrigins: [appUrl, ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : [])],
   advanced: {
     // Traefik terminates SSL and forwards as HTTP internally.
     // useSecureCookies ensures the Secure flag is set even though the
@@ -27,13 +28,13 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  ...(env.BETTER_AUTH_GITHUB_CLIENT_ID && env.BETTER_AUTH_GITHUB_CLIENT_SECRET
+  ...(process.env.BETTER_AUTH_GITHUB_CLIENT_ID && process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET
     ? {
         socialProviders: {
           github: {
-            clientId: env.BETTER_AUTH_GITHUB_CLIENT_ID,
-            clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
-            redirectURI: `${env.NEXT_PUBLIC_APP_URL}/api/auth/callback/github`,
+            clientId: process.env.BETTER_AUTH_GITHUB_CLIENT_ID,
+            clientSecret: process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
+            redirectURI: `${appUrl}/api/auth/callback/github`,
           },
         },
       }

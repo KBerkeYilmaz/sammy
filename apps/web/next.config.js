@@ -11,13 +11,21 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 /** @type {import("next").NextConfig} */
 const config = {
   reactCompiler: true,
+  // pg leaks into browser module analysis via: trpc/react.tsx → root.ts → trpc.ts → db.ts → pg
+  // The type-only import chain still causes the bundler to resolve pg's Node.js built-ins.
+  // These stubs prevent browser build failures — pg is never actually called client-side.
+  // See: https://nextjs.org/docs/app/guides/upgrading/version-16#resolve-alias-fallback
   turbopack: {
-    root: __dirname,
+    resolveAlias: {
+      dns: { browser: "./src/empty.ts" },
+      net: { browser: "./src/empty.ts" },
+      tls: { browser: "./src/empty.ts" },
+      fs: { browser: "./src/empty.ts" },
+    },
   },
   output: "standalone",
-  // Point tracing root to monorepo root so workspace packages are included in standalone
+  // Required for Docker standalone builds — includes workspace packages in trace
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  // Prevent Next.js from bundling pg — Prisma's native driver needs it as an external
   serverExternalPackages: ["pg"],
   async headers() {
     return [
