@@ -29,6 +29,7 @@ const createAuth = () =>
     },
     emailAndPassword: {
       enabled: true,
+      signUp: { enabled: false },
     },
     ...(process.env["BETTER_AUTH_GITHUB_CLIENT_ID"] && process.env["BETTER_AUTH_GITHUB_CLIENT_SECRET"]
       ? {

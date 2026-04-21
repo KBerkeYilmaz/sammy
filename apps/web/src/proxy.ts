@@ -5,6 +5,11 @@ const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/api/auth", "/onboarding", "/api/
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Redirect sign-up to sign-in (registration disabled)
+  if (pathname.startsWith("/sign-up")) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  }
+
   // Allow public routes and auth API
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
