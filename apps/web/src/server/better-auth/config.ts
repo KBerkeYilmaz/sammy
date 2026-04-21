@@ -43,6 +43,11 @@ const createAuth = () =>
       : {}),
   });
 
-export const auth = createAuth();
+// Browser bundle evaluates this module via tRPC type chain.
+// Skip init client-side — auth is only used server-side.
+export const auth =
+  typeof window === "undefined"
+    ? createAuth()
+    : (undefined as unknown as ReturnType<typeof createAuth>);
 
 export type Session = typeof auth.$Infer.Session;
