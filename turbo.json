@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["SKIP_ENV_VALIDATION"],
+  "globalPassThroughEnv": ["SKIP_ENV_VALIDATION", "BETTER_AUTH_SECRET"],
   "globalEnv": ["NEXT_PUBLIC_APP_URL"],
   "tasks": {
     "build": {
