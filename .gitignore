@@ -56,3 +56,7 @@ packages/cli/dist/
 
 # git worktrees
 .worktrees/
+
+# turbo cache
+.turbo/
+**/.turbo/
