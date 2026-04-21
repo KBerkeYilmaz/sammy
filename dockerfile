@@ -13,6 +13,7 @@ FROM base AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/full/packages/db/prisma ./packages/db/prisma/
 RUN pnpm install --frozen-lockfile
 
 # ---- Build ----
